@@ -22,7 +22,7 @@ servent d'identité.
   ou **au téléphone** (le gérant encaisse et confirme). Le **solde doit être réglé avant le dernier
   repas** : sinon ce repas reste bloqué. L'abonné peut toujours commander en payant.
 - **Abonnement pas encore confirmé** : les repas ne sont pas utilisables (message au client).
-- **Code** : 5 essais faux → bloqué. Le gérant génère un nouveau code (bouton ↻), l'envoie par WhatsApp.
+- **Code** : 5 essais faux → bloqué. Le gérant génère un nouveau code (bouton ↻), l'envoie par SMS.
 - **Commande livrée** → repas « livré » ; **commande annulée** → le repas retourne au crédit.
 
 ## Côté client
@@ -36,11 +36,11 @@ servent d'identité.
 
 ## Côté gérant
 - **Repas du jour** : repas d'abonnés commandés ce jour-là (plat, référence), « Marquer livré » (livre la
-  commande), bouton **WhatsApp « Prévenir »** : « votre repas est livré, il vous reste X repas sur N ».
+  commande), bouton **« Prévenir par SMS »** (ouvre Messages avec le texte prêt) : « votre repas est livré, il vous reste X repas sur N ».
 - **Abonnés** : repas restants, encaissé / prix, mode de paiement, code ; Confirmer, **Encaisser**
-  (acompte ou solde, avec historique), envoyer le code sur WhatsApp, nouveau code, annuler.
+  (acompte ou solde, avec historique), envoyer le code par SMS, nouveau code, annuler.
 - **Formules** : nom, nombre de repas (1 à 60), prix, livraison incluse, visible ou non.
-- **Commandes** : badge « Abonné », détail « montant pris en charge, reste X repas » et bouton WhatsApp.
+- **Commandes** : badge « Abonné », détail « montant pris en charge, reste X repas » et bouton SMS.
   Ticket de livraison : « Abonnement » (rien à encaisser).
 
 ## Données
@@ -60,4 +60,4 @@ servent d'identité.
 ## Pour plus tard
 - Statistiques : l'argent des abonnements (paiements) n'apparaît pas encore dans le tableau de bord ni
   les rapports ; les repas d'abonnés y comptent au prix du menu.
-- Expiration du crédit (ex. repas à utiliser en 2 mois), retrait sur place, notification automatique.
+- Expiration du crédit (ex. repas à utiliser en 2 mois), retrait sur place, envoi automatique des SMS (passerelle SMS), WhatsApp.

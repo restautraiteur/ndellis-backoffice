@@ -5,7 +5,7 @@ import {
   ChevronDown,
   Download,
   FileSpreadsheet,
-  MessageCircle,
+  MessageSquareText,
   Printer,
   Receipt,
   Scissors,
@@ -52,7 +52,7 @@ import {
   deliveredMessage,
   remainingMeals,
   subscriptionsQuery,
-  whatsappLink,
+  smsLink,
 } from "@/features/admin/subscriptions/api";
 
 type Patch = { id: string; patch: Record<string, unknown> };
@@ -560,7 +560,7 @@ function OrderDetails({ order, items }: { order: Order; items: OrderItem[] }) {
   );
 }
 
-/** Commande d'abonné : montant pris en charge, repas restants et message WhatsApp après livraison. */
+/** Commande d'abonné : montant pris en charge, repas restants et SMS après livraison. */
 function SubscriptionDetail({ order }: { order: Order }) {
   const { data: subs = [] } = useQuery(subscriptionsQuery());
   const sub = subs.find((s) => s.id === order.subscription_id);
@@ -576,12 +576,8 @@ function SubscriptionDetail({ order }: { order: Order }) {
           : ""}
       </span>
       <Button size="sm" variant="outline" className="mt-2" asChild>
-        <a
-          href={whatsappLink(sub.phone, deliveredMessage(sub, remaining, CLIENT.name))}
-          target="_blank"
-          rel="noreferrer"
-        >
-          <MessageCircle /> Prévenir : repas livré
+        <a href={smsLink(sub.phone, deliveredMessage(sub, remaining, CLIENT.name))}>
+          <MessageSquareText /> SMS : repas livré
         </a>
       </Button>
     </Detail>

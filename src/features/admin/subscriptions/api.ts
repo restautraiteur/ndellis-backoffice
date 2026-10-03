@@ -121,11 +121,12 @@ export function formatPhone(digits: string) {
   return `${m[1] ? "+221 " : ""}${m[2]} ${m[3]} ${m[4]} ${m[5]}`;
 }
 
-/** Lien WhatsApp avec un message prêt à envoyer (numéros sénégalais à 9 chiffres complétés). */
-export function whatsappLink(phone: string, text: string) {
+/** Lien SMS avec un message prêt à envoyer : ouvre l'application Messages du téléphone
+ * (numéros sénégalais à 9 chiffres complétés). */
+export function smsLink(phone: string, text: string) {
   const digits = phone.replace(/\D/g, "");
   const intl = digits.length === 9 ? `221${digits}` : digits;
-  return `https://wa.me/${intl}?text=${encodeURIComponent(text)}`;
+  return `sms:+${intl}?body=${encodeURIComponent(text)}`;
 }
 
 /** Message envoyé à l'abonné quand son repas est livré. */
@@ -136,7 +137,7 @@ export function deliveredMessage(
 ) {
   const balance = sub.price - sub.amount_paid;
   return [
-    `Bonjour ${sub.customer_name}, votre repas est livré. Bon appétit ! 🍽️`,
+    `Bonjour ${sub.customer_name}, votre repas est livré. Bon appétit !`,
     remaining > 0
       ? `Il vous reste ${remaining} repas sur ${sub.meals_count} dans votre abonnement.`
       : "C'était le dernier repas de votre abonnement. Merci ! Vous pouvez vous réabonner sur notre site.",

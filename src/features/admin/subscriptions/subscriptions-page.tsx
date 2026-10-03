@@ -4,7 +4,7 @@ import {
   Banknote,
   Check,
   KeyRound,
-  MessageCircle,
+  MessageSquareText,
   Pencil,
   Phone,
   Plus,
@@ -31,7 +31,7 @@ import {
   mealDish,
   plansAdminQuery,
   remainingMeals,
-  whatsappLink,
+  smsLink,
   subscriptionsQuery,
   type Plan,
   type Subscription,
@@ -179,12 +179,8 @@ function TodayMeals({ subs }: { subs: Subscription[] }) {
                   )
                 )}
                 <Button size="sm" variant="outline" asChild>
-                  <a
-                    href={whatsappLink(s.phone, deliveredMessage(s, remaining, CLIENT.name))}
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    <MessageCircle className="size-4" /> Prévenir
+                  <a href={smsLink(s.phone, deliveredMessage(s, remaining, CLIENT.name))}>
+                    <MessageSquareText className="size-4" /> Prévenir par SMS
                   </a>
                 </Button>
               </li>
@@ -350,13 +346,11 @@ function Subscribers({ subs }: { subs: Subscription[] }) {
                       <>
                         <Button size="icon" variant="ghost" className="ml-1" asChild>
                           <a
-                            href={whatsappLink(s.phone, codeMessage)}
-                            target="_blank"
-                            rel="noreferrer"
-                            aria-label={`Envoyer le code à ${s.customer_name} sur WhatsApp`}
-                            title="Envoyer le code sur WhatsApp"
+                            href={smsLink(s.phone, codeMessage)}
+                            aria-label={`Envoyer le code à ${s.customer_name} par SMS`}
+                            title="Envoyer le code par SMS"
                           >
-                            <MessageCircle className="size-4" />
+                            <MessageSquareText className="size-4" />
                           </a>
                         </Button>
                         <Button
