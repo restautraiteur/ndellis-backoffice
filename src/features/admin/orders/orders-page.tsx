@@ -5,6 +5,7 @@ import {
   ChevronDown,
   Download,
   FileSpreadsheet,
+  MessageCircle,
   Printer,
   Receipt,
   Scissors,
@@ -46,6 +47,13 @@ import {
 } from "@/features/admin/components/admin-ui";
 import { ORDER_STATUS_TONES, PAYMENT_STATUS_TONES } from "@/features/admin/components/status-tones";
 import { cn } from "@core/lib/utils";
+import { CLIENT } from "@/config/client";
+import {
+  deliveredMessage,
+  remainingMeals,
+  subscriptionsQuery,
+  whatsappLink,
+} from "@/features/admin/subscriptions/api";
 
 type Patch = { id: string; patch: Record<string, unknown> };
 
@@ -326,6 +334,11 @@ export function OrdersPage() {
                             {formatCreatedAt(order.created_at)}
                             {order.order_type === "precommande" && " · Précommande"}
                           </p>
+                          {order.subscription_id && (
+                            <span className="mt-1 inline-block rounded-full bg-sky-100 px-2 py-0.5 text-[11px] font-semibold text-sky-800">
+                              Abonné
+                            </span>
+                          )}
                         </td>
                         <td className="p-3">
                           <p className="font-medium">
@@ -500,6 +513,7 @@ function OrderDetails({ order, items }: { order: Order; items: OrderItem[] }) {
           )}
         </Detail>
         {order.instructions && <Detail label="Instructions">{order.instructions}</Detail>}
+        {order.subscription_id && <SubscriptionDetail order={order} />}
         {order.order_type === "precommande" && (
           <Detail label="Acompte">
             {formatPrice(order.deposit_required)} via{" "}
@@ -543,6 +557,34 @@ function OrderDetails({ order, items }: { order: Order; items: OrderItem[] }) {
         </Button>
       </div>
     </div>
+  );
+}
+
+/** Commande d'abonné : montant pris en charge, repas restants et message WhatsApp après livraison. */
+function SubscriptionDetail({ order }: { order: Order }) {
+  const { data: subs = [] } = useQuery(subscriptionsQuery());
+  const sub = subs.find((s) => s.id === order.subscription_id);
+  if (!sub) return null;
+  const remaining = remainingMeals(sub);
+  return (
+    <Detail label="Abonnement">
+      {sub.plan_name} · {formatPrice(order.subscription_discount)} pris en charge
+      <span className="block text-muted-foreground">
+        Reste {remaining} repas sur {sub.meals_count}
+        {sub.amount_paid < sub.price
+          ? ` · solde à régler : ${formatPrice(sub.price - sub.amount_paid)}`
+          : ""}
+      </span>
+      <Button size="sm" variant="outline" className="mt-2" asChild>
+        <a
+          href={whatsappLink(sub.phone, deliveredMessage(sub, remaining, CLIENT.name))}
+          target="_blank"
+          rel="noreferrer"
+        >
+          <MessageCircle /> Prévenir : repas livré
+        </a>
+      </Button>
+    </Detail>
   );
 }
 

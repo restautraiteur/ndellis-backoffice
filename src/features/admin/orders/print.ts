@@ -261,7 +261,8 @@ function ticketsOf(orders: Order[], items: OrderItem[], day?: string) {
 
 function ticketHtml(order: Order, date: string, lines: OrderItem[]) {
   const amount = lines.reduce((s, l) => s + l.amount, 0);
-  const paid = order.payment_status === "paye";
+  // Commande d'abonné entièrement prise en charge : rien à encaisser à la livraison.
+  const paid = order.payment_status === "paye" || order.payment_status === "abonnement";
   const shown = lines.slice(0, MAX_TICKET_LINES);
   const hidden = lines.length - shown.length;
   return `<article class="ticket">
@@ -276,7 +277,11 @@ function ticketHtml(order: Order, date: string, lines: OrderItem[]) {
       hidden > 0 ? `<li class="muted">+ ${hidden} autre(s) article(s)</li>` : ""
     }</ul>
     <footer><span class="num">${esc(formatPrice(amount))}</span><span class="pay ${paid ? "paid" : ""}">${
-      paid ? "Payé" : esc(PAYMENT_STATUS_LABELS[order.payment_status] ?? "À encaisser")
+      order.payment_status === "abonnement"
+        ? "Abonnement"
+        : paid
+          ? "Payé"
+          : esc(PAYMENT_STATUS_LABELS[order.payment_status] ?? "À encaisser")
     }</span></footer>
   </article>`;
 }

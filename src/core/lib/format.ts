@@ -100,6 +100,7 @@ export const PAYMENT_STATUSES = [
   "acompte_a_verifier",
   "acompte_paye",
   "paye",
+  "abonnement",
 ] as const;
 
 export const PAYMENT_STATUS_LABELS: Record<string, string> = {
@@ -109,6 +110,7 @@ export const PAYMENT_STATUS_LABELS: Record<string, string> = {
   acompte_a_verifier: "Acompte à vérifier",
   acompte_paye: "Acompte payé",
   paye: "Payé",
+  abonnement: "Abonnement",
 };
 
 export const CATEGORY_LABELS: Record<string, string> = {

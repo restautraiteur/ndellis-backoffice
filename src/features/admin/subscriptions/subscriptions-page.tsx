@@ -1,6 +1,16 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Check, Pencil, Phone, Plus, X } from "lucide-react";
+import {
+  Banknote,
+  Check,
+  KeyRound,
+  MessageCircle,
+  Pencil,
+  Phone,
+  Plus,
+  RefreshCw,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@ui/components/ui/button";
 import { Input } from "@ui/components/ui/input";
@@ -16,13 +26,17 @@ import {
 import { ConfirmDialog, EmptyState, PageHeader } from "@/features/admin/components/admin-ui";
 import {
   SUBSCRIPTION_STATUS_LABELS,
+  deliveredMessage,
   formatPhone,
+  mealDish,
   plansAdminQuery,
   remainingMeals,
+  whatsappLink,
   subscriptionsQuery,
   type Plan,
   type Subscription,
 } from "@/features/admin/subscriptions/api";
+import { CLIENT } from "@/config/client";
 import { db } from "@core/lib/db";
 import { formatDay, formatPrice, todayISO } from "@core/lib/format";
 import { cn } from "@core/lib/utils";
@@ -45,7 +59,7 @@ export function SubscriptionsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Abonnements"
-        description="Repas réservés d'avance par les abonnés."
+        description="Repas achetés d'avance : les abonnés les utilisent en commandant sur le site avec leur code."
       />
       <div role="tablist" className="flex w-fit flex-wrap rounded-lg bg-muted p-1">
         {TABS.map(([value, label]) => (
@@ -78,30 +92,29 @@ export function SubscriptionsPage() {
   );
 }
 
-function useMealStatus() {
+function useMarkDelivered() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: async (input: { id: string; status: "prevu" | "pris" }) => {
-      const { error } = await db
-        .from("subscription_meals")
-        .update({ status: input.status })
-        .eq("id", input.id);
+    // Le repas passe à « pris » automatiquement quand la commande est livrée.
+    mutationFn: async (orderId: string) => {
+      const { error } = await db.from("orders").update({ status: "livree" }).eq("id", orderId);
       if (error) throw new Error(error.message);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["subscriptions"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+      queryClient.invalidateQueries({ queryKey: ["orders"] });
+    },
     onError: (error: Error) => toast.error(error.message),
   });
 }
 
 function TodayMeals({ subs }: { subs: Subscription[] }) {
   const [day, setDay] = useState(todayISO());
-  const setStatus = useMealStatus();
-  const rows = subs
-    .filter((s) => s.status !== "annulee")
-    .flatMap((s) =>
-      s.meals.filter((m) => m.meal_date === day && m.status !== "annule").map((m) => ({ s, m })),
-    );
-  const taken = rows.filter((r) => r.m.status === "pris").length;
+  const markDelivered = useMarkDelivered();
+  const rows = subs.flatMap((s) =>
+    s.meals.filter((m) => m.meal_date === day && m.status !== "annule").map((m) => ({ s, m })),
+  );
+  const delivered = rows.filter((r) => r.m.status === "pris").length;
 
   return (
     <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
@@ -109,7 +122,8 @@ function TodayMeals({ subs }: { subs: Subscription[] }) {
         <div>
           <h2 className="font-semibold">Repas des abonnés · {formatDay(day)}</h2>
           <p className="text-sm text-muted-foreground">
-            {rows.length} repas à servir · {taken} pris. À ajouter à la production du jour.
+            {rows.length} repas commandé{rows.length > 1 ? "s" : ""} · {delivered} livré
+            {delivered > 1 ? "s" : ""}. Ils figurent aussi dans Commandes (badge « Abonné »).
           </p>
         </div>
         <Input
@@ -121,34 +135,61 @@ function TodayMeals({ subs }: { subs: Subscription[] }) {
         />
       </div>
       {rows.length === 0 ? (
-        <EmptyState title="Aucun repas d'abonné ce jour-là" />
+        <EmptyState title="Aucun repas d'abonné ce jour-là">
+          Les abonnés utilisent leurs repas en commandant sur le site avec leur code.
+        </EmptyState>
       ) : (
         <ul className="divide-y divide-border">
-          {rows.map(({ s, m }) => (
-            <li key={m.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
-              <span className="min-w-0 flex-1">
-                <span className="block font-medium">{s.customer_name}</span>
-                <span className="block text-xs text-muted-foreground">
-                  {formatPhone(s.phone)}
-                  {s.address ? ` · ${s.address}` : " · pas d'adresse (retrait ou à confirmer)"}
+          {rows.map(({ s, m }) => {
+            const remaining = remainingMeals(s);
+            return (
+              <li key={m.id} className="flex flex-wrap items-center gap-3 px-5 py-3">
+                <span className="min-w-0 flex-1">
+                  <span className="block font-medium">
+                    {s.customer_name}
+                    <span className="font-normal text-muted-foreground">
+                      {" "}
+                      · {mealDish(m) || "—"}
+                    </span>
+                  </span>
+                  <span className="block text-xs text-muted-foreground">
+                    {formatPhone(s.phone)} · {m.orders?.reference ?? "commande supprimée"} · reste{" "}
+                    {remaining} repas
+                  </span>
                 </span>
-              </span>
-              {s.payment_status !== "paye" && (
-                <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
-                  non payé
-                </span>
-              )}
-              <Button
-                size="sm"
-                variant={m.status === "pris" ? "default" : "outline"}
-                onClick={() =>
-                  setStatus.mutate({ id: m.id, status: m.status === "pris" ? "prevu" : "pris" })
-                }
-              >
-                <Check className="size-4" /> {m.status === "pris" ? "Pris" : "Marquer pris"}
-              </Button>
-            </li>
-          ))}
+                {s.amount_paid < s.price && (
+                  <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                    reste {formatPrice(s.price - s.amount_paid)}
+                  </span>
+                )}
+                {m.status === "pris" ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-800">
+                    <Check className="size-3.5" /> Livré
+                  </span>
+                ) : (
+                  m.order_id && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={markDelivered.isPending}
+                      onClick={() => markDelivered.mutate(m.order_id!)}
+                    >
+                      <Check className="size-4" /> Marquer livré
+                    </Button>
+                  )
+                )}
+                <Button size="sm" variant="outline" asChild>
+                  <a
+                    href={whatsappLink(s.phone, deliveredMessage(s, remaining, CLIENT.name))}
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    <MessageCircle className="size-4" /> Prévenir
+                  </a>
+                </Button>
+              </li>
+            );
+          })}
         </ul>
       )}
     </section>
@@ -158,26 +199,34 @@ function TodayMeals({ subs }: { subs: Subscription[] }) {
 function Subscribers({ subs }: { subs: Subscription[] }) {
   const queryClient = useQueryClient();
   const [toCancel, setToCancel] = useState<Subscription | null>(null);
-  const today = todayISO();
+  const [toCash, setToCash] = useState<Subscription | null>(null);
+  const invalidate = () => queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
 
   const update = useMutation({
     mutationFn: async (input: { sub: Subscription; patch: Partial<Subscription> }) => {
       const { error } = await db.from("subscriptions").update(input.patch).eq("id", input.sub.id);
       if (error) throw new Error(error.message);
-      if (input.patch.status === "annulee") {
-        // Les repas à venir sont annulés ; ceux déjà pris restent dans l'historique.
-        const { error: mealsError } = await db
-          .from("subscription_meals")
-          .update({ status: "annule" })
-          .eq("subscription_id", input.sub.id)
-          .eq("status", "prevu")
-          .gte("meal_date", today);
-        if (mealsError) throw new Error(mealsError.message);
-      }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+      invalidate();
       toast.success("Abonnement mis à jour");
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  const newPin = useMutation({
+    mutationFn: async (sub: Subscription) => {
+      const pin = String(Math.floor(Math.random() * 10000)).padStart(4, "0");
+      const { error } = await db
+        .from("subscriptions")
+        .update({ pin, pin_failures: 0 })
+        .eq("id", sub.id);
+      if (error) throw new Error(error.message);
+      return pin;
+    },
+    onSuccess: (pin) => {
+      invalidate();
+      toast.success(`Nouveau code : ${pin}`);
     },
     onError: (error: Error) => toast.error(error.message),
   });
@@ -195,108 +244,153 @@ function Subscribers({ subs }: { subs: Subscription[] }) {
   return (
     <section className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[760px] text-sm">
+        <table className="w-full min-w-[880px] text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/50 text-left text-xs font-semibold text-muted-foreground">
               <th className="px-5 py-2.5">Abonné</th>
               <th className="px-3 py-2.5">Formule</th>
-              <th className="px-3 py-2.5">Période</th>
-              <th className="px-3 py-2.5 text-right">Restants</th>
+              <th className="px-3 py-2.5 text-right">Repas restants</th>
+              <th className="px-3 py-2.5">Règlement</th>
               <th className="px-3 py-2.5">Statut</th>
               <th className="px-3 py-2.5" />
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {subs.map((s) => (
-              <tr key={s.id} className={cn(s.status === "annulee" && "text-muted-foreground")}>
-                <td className="px-5 py-3">
-                  <span className="block font-medium">{s.customer_name}</span>
-                  <a
-                    href={`tel:+${s.phone.startsWith("221") ? s.phone : `221${s.phone}`}`}
-                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                  >
-                    <Phone className="size-3" /> {formatPhone(s.phone)}
-                  </a>
-                </td>
-                <td className="px-3 py-3">
-                  {s.plan_name}
-                  <span className="block text-xs text-muted-foreground">
-                    {s.meals_count} repas · {formatPrice(s.price)}
-                  </span>
-                </td>
-                <td className="px-3 py-3 text-xs">
-                  {formatDay(s.start_date)}
-                  <span className="block text-muted-foreground">→ {formatDay(s.end_date)}</span>
-                </td>
-                <td className="px-3 py-3 text-right font-semibold">{remainingMeals(s, today)}</td>
-                <td className="px-3 py-3">
-                  <span
-                    className={cn(
-                      "mr-1 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold",
-                      s.status === "en_attente" && "bg-amber-100 text-amber-800",
-                      s.status === "active" && "bg-emerald-100 text-emerald-800",
-                      s.status === "annulee" && "bg-muted text-muted-foreground",
+            {subs.map((s) => {
+              const remaining = remainingMeals(s);
+              const balance = s.price - s.amount_paid;
+              const codeMessage = `Bonjour ${s.customer_name}, votre code abonné ${CLIENT.name} est ${s.pin}. Pour utiliser un repas : choisissez votre plat sur le site, puis entrez votre numéro et ce code au moment de valider.`;
+              return (
+                <tr key={s.id} className={cn(s.status === "annulee" && "text-muted-foreground")}>
+                  <td className="px-5 py-3">
+                    <span className="block font-medium">{s.customer_name}</span>
+                    <a
+                      href={`tel:+${s.phone.startsWith("221") ? s.phone : `221${s.phone}`}`}
+                      className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                    >
+                      <Phone className="size-3" /> {formatPhone(s.phone)}
+                    </a>
+                    <span className="mt-0.5 flex items-center gap-1 text-xs text-muted-foreground">
+                      <KeyRound className="size-3" /> Code {s.pin}
+                      {s.pin_failures >= 5 && (
+                        <span className="font-semibold text-destructive"> · bloqué</span>
+                      )}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3">
+                    {s.plan_name}
+                    <span className="block text-xs text-muted-foreground">
+                      {s.meals_count} repas · depuis le {formatDay(s.start_date).toLowerCase()}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 text-right">
+                    <span className="text-lg font-bold">{remaining}</span>
+                    <span className="text-muted-foreground"> / {s.meals_count}</span>
+                  </td>
+                  <td className="px-3 py-3 text-xs">
+                    <span className="block text-sm font-medium">
+                      {formatPrice(s.amount_paid)}{" "}
+                      <span className="font-normal text-muted-foreground">
+                        / {formatPrice(s.price)}
+                      </span>
+                    </span>
+                    <span className="text-muted-foreground">
+                      {s.payment_choice === "moitie" ? "En deux fois" : "En une fois"} ·{" "}
+                      {s.payment_mode === "en_ligne" ? "en ligne" : "au téléphone"}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3">
+                    <span
+                      className={cn(
+                        "mr-1 inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold",
+                        s.status === "en_attente" && "bg-amber-100 text-amber-800",
+                        s.status === "active" && "bg-emerald-100 text-emerald-800",
+                        s.status === "annulee" && "bg-muted text-muted-foreground",
+                      )}
+                    >
+                      {SUBSCRIPTION_STATUS_LABELS[s.status]}
+                    </span>
+                    <span
+                      className={cn(
+                        "inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold",
+                        s.payment_status === "paye" && "bg-emerald-100 text-emerald-800",
+                        s.payment_status === "acompte" && "bg-sky-100 text-sky-800",
+                        s.payment_status === "non_paye" && "bg-muted text-muted-foreground",
+                      )}
+                    >
+                      {PAYMENT_LABELS[s.payment_status]}
+                    </span>
+                    {balance > 0 && remaining <= 1 && s.status === "active" && (
+                      <span className="mt-1 block text-xs font-medium text-amber-700">
+                        Dernier repas bloqué jusqu'au solde
+                      </span>
                     )}
-                  >
-                    {SUBSCRIPTION_STATUS_LABELS[s.status]}
-                  </span>
-                  <span
-                    className={cn(
-                      "inline-block rounded-full px-2.5 py-0.5 text-xs font-semibold",
-                      s.payment_status === "paye"
-                        ? "bg-emerald-100 text-emerald-800"
-                        : "bg-muted text-muted-foreground",
+                  </td>
+                  <td className="whitespace-nowrap px-3 py-3 text-right">
+                    {s.status === "en_attente" && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => update.mutate({ sub: s, patch: { status: "active" } })}
+                      >
+                        Confirmer
+                      </Button>
                     )}
-                  >
-                    {s.payment_status === "paye" ? "Payé" : "Non payé"}
-                  </span>
-                </td>
-                <td className="whitespace-nowrap px-3 py-3 text-right">
-                  {s.status === "en_attente" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => update.mutate({ sub: s, patch: { status: "active" } })}
-                    >
-                      Confirmer
-                    </Button>
-                  )}
-                  {s.status !== "annulee" && s.payment_status !== "paye" && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="ml-1"
-                      onClick={() =>
-                        update.mutate({
-                          sub: s,
-                          patch: { payment_status: "paye", status: "active" },
-                        })
-                      }
-                    >
-                      Marquer payé
-                    </Button>
-                  )}
-                  {s.status !== "annulee" && (
-                    <Button
-                      size="icon"
-                      variant="ghost"
-                      className="ml-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                      aria-label={`Annuler l'abonnement de ${s.customer_name}`}
-                      onClick={() => setToCancel(s)}
-                    >
-                      <X className="size-4" />
-                    </Button>
-                  )}
-                </td>
-              </tr>
-            ))}
+                    {s.status !== "annulee" && balance > 0 && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="ml-1"
+                        onClick={() => setToCash(s)}
+                      >
+                        <Banknote className="size-4" /> Encaisser
+                      </Button>
+                    )}
+                    {s.status !== "annulee" && (
+                      <>
+                        <Button size="icon" variant="ghost" className="ml-1" asChild>
+                          <a
+                            href={whatsappLink(s.phone, codeMessage)}
+                            target="_blank"
+                            rel="noreferrer"
+                            aria-label={`Envoyer le code à ${s.customer_name} sur WhatsApp`}
+                            title="Envoyer le code sur WhatsApp"
+                          >
+                            <MessageCircle className="size-4" />
+                          </a>
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          aria-label={`Nouveau code pour ${s.customer_name}`}
+                          title="Nouveau code (débloque après trop d'essais)"
+                          onClick={() => newPin.mutate(s)}
+                        >
+                          <RefreshCw className="size-4" />
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                          aria-label={`Annuler l'abonnement de ${s.customer_name}`}
+                          onClick={() => setToCancel(s)}
+                        >
+                          <X className="size-4" />
+                        </Button>
+                      </>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
+      <CashDialog sub={toCash} onClose={() => setToCash(null)} />
       <ConfirmDialog
         open={toCancel !== null}
         title={`Annuler l'abonnement de ${toCancel?.customer_name ?? ""} ?`}
-        description="Les repas à venir seront annulés. Les repas déjà pris restent dans l'historique."
+        description="Les repas restants ne pourront plus être utilisés. Les commandes déjà passées ne changent pas."
         confirmLabel="Annuler l'abonnement"
         onCancel={() => setToCancel(null)}
         onConfirm={() => {
@@ -305,6 +399,124 @@ function Subscribers({ subs }: { subs: Subscription[] }) {
         }}
       />
     </section>
+  );
+}
+
+const PAYMENT_LABELS: Record<Subscription["payment_status"], string> = {
+  non_paye: "Non payé",
+  acompte: "Acompte",
+  paye: "Payé",
+};
+
+/** Paiement reçu par le gérant (Wave, espèces…) : acompte ou solde. Confirme l'abonnement. */
+function CashDialog({ sub, onClose }: { sub: Subscription | null; onClose: () => void }) {
+  const queryClient = useQueryClient();
+  const [amount, setAmount] = useState("");
+  const [note, setNote] = useState("");
+  const balance = sub ? sub.price - sub.amount_paid : 0;
+  const suggested =
+    sub && sub.amount_paid === 0 && sub.payment_choice === "moitie"
+      ? Math.ceil(sub.price / 2)
+      : balance;
+  const value = Number(amount || suggested);
+  const valid = Number.isInteger(value) && value > 0 && value <= balance;
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const { error } = await db.from("subscription_payments").insert({
+        subscription_id: sub!.id,
+        amount: value,
+        method: "manuel",
+        status: "paye",
+        note: note.trim() || null,
+      });
+      if (error) throw new Error(error.message);
+      if (sub!.status === "en_attente") {
+        const { error: statusError } = await db
+          .from("subscriptions")
+          .update({ status: "active" })
+          .eq("id", sub!.id);
+        if (statusError) throw new Error(statusError.message);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["subscriptions"] });
+      toast.success("Paiement enregistré");
+      setAmount("");
+      setNote("");
+      onClose();
+    },
+    onError: (error: Error) => toast.error(error.message),
+  });
+
+  return (
+    <Dialog open={sub !== null} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Encaisser · {sub?.customer_name}</DialogTitle>
+        </DialogHeader>
+        {sub && (
+          <div className="space-y-4 text-sm">
+            <p className="text-muted-foreground">
+              Déjà réglé : {formatPrice(sub.amount_paid)} sur {formatPrice(sub.price)}. Reste{" "}
+              {formatPrice(balance)}.
+            </p>
+            {sub.payments.length > 0 && (
+              <ul className="rounded-lg border border-border text-xs">
+                {sub.payments.map((p) => (
+                  <li key={p.id} className="flex justify-between gap-3 px-3 py-1.5">
+                    <span>
+                      {new Date(p.created_at).toLocaleDateString("fr-FR")} ·{" "}
+                      {p.method === "paydunya" ? "en ligne" : "manuel"}
+                      {p.note ? ` · ${p.note}` : ""}
+                    </span>
+                    <span
+                      className={cn(p.status !== "paye" && "text-muted-foreground line-through")}
+                    >
+                      {formatPrice(p.amount)}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="space-y-2">
+              <Label htmlFor="cash-amount">Montant reçu (FCFA)</Label>
+              <Input
+                id="cash-amount"
+                type="number"
+                min={1}
+                max={balance}
+                placeholder={String(suggested)}
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cash-note">Note (facultatif)</Label>
+              <Input
+                id="cash-note"
+                placeholder="Wave, espèces, référence…"
+                value={note}
+                onChange={(e) => setNote(e.target.value)}
+              />
+            </div>
+            {!valid && (
+              <p className="text-xs text-destructive">
+                Le montant doit être compris entre 1 et {formatPrice(balance)}.
+              </p>
+            )}
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>
+            Annuler
+          </Button>
+          <Button disabled={!valid || save.isPending} onClick={() => save.mutate()}>
+            Enregistrer {valid ? formatPrice(value) : ""}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -370,8 +582,8 @@ function Plans({ plans }: { plans: Plan[] }) {
       </div>
       {plans.length === 0 ? (
         <EmptyState title="Aucune formule">
-          Créez vos formules (ex. « Hebdo 5 » : 5 repas, ou « Mensuelle » : 22 repas) pour que
-          l'abonnement apparaisse sur le site.
+          Créez vos formules (ex. « Semaine complète » : 5 repas, ou « Le Mois complet » : 22 repas)
+          pour que l'abonnement apparaisse sur le site.
         </EmptyState>
       ) : (
         <ul className="divide-y divide-border">
@@ -425,7 +637,7 @@ function Plans({ plans }: { plans: Plan[] }) {
                 <Label htmlFor="pl-name">Nom</Label>
                 <Input
                   id="pl-name"
-                  placeholder="Formule Mensuelle"
+                  placeholder="Le Mois complet"
                   value={draft.name}
                   onChange={(e) => setDraft({ ...draft, name: e.target.value })}
                 />

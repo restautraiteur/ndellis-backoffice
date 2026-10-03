@@ -18,6 +18,9 @@ export type Order = {
   deposit_required: number;
   payment_method: string | null;
   payment_reference: string | null;
+  /** Commande d'un abonné : montant pris en charge par l'abonnement. */
+  subscription_id: string | null;
+  subscription_discount: number;
   created_at: string;
 };
 

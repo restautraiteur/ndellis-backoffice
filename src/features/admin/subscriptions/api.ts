@@ -11,11 +11,28 @@ export type Plan = {
   sort_order: number;
 };
 
+/** Repas utilisé par une commande : commandé (« prevu »), livré (« pris ») ou annulé avec la commande. */
 export type Meal = {
   id: string;
   subscription_id: string;
   meal_date: string;
   status: "prevu" | "pris" | "annule";
+  order_id: string | null;
+  orders: {
+    reference: string;
+    status: string;
+    order_items: { product_name: string; category: string; day_date: string }[];
+  } | null;
+};
+
+export type SubscriptionPayment = {
+  id: string;
+  subscription_id: string;
+  amount: number;
+  method: "paydunya" | "manuel";
+  status: "en_attente" | "paye" | "echec";
+  note: string | null;
+  created_at: string;
 };
 
 export type Subscription = {
@@ -29,10 +46,16 @@ export type Subscription = {
   start_date: string;
   end_date: string;
   status: "en_attente" | "active" | "annulee";
-  payment_status: "non_paye" | "paye";
+  payment_status: "non_paye" | "acompte" | "paye";
+  payment_choice: "total" | "moitie";
+  payment_mode: "telephone" | "en_ligne";
+  amount_paid: number;
+  pin: string;
+  pin_failures: number;
   notes: string | null;
   created_at: string;
   meals: Meal[];
+  payments: SubscriptionPayment[];
 };
 
 export const SUBSCRIPTION_STATUS_LABELS: Record<Subscription["status"], string> = {
@@ -56,19 +79,39 @@ export const subscriptionsQuery = () =>
   queryOptions({
     queryKey: ["subscriptions"],
     queryFn: async () => {
-      const [subs, meals] = await Promise.all([
-        run<Omit<Subscription, "meals">[]>(
+      const [subs, meals, payments] = await Promise.all([
+        run<Omit<Subscription, "meals" | "payments">[]>(
           db.from("subscriptions").select("*").order("created_at", { ascending: false }),
         ),
-        run<Meal[]>(db.from("subscription_meals").select("*").order("meal_date")),
+        run<Meal[]>(
+          db
+            .from("subscription_meals")
+            .select("*, orders(reference, status, order_items(product_name, category, day_date))")
+            .order("meal_date"),
+        ),
+        run<SubscriptionPayment[]>(
+          db.from("subscription_payments").select("*").order("created_at"),
+        ),
       ]);
-      return subs.map((s) => ({ ...s, meals: meals.filter((m) => m.subscription_id === s.id) }));
+      return subs.map((s) => ({
+        ...s,
+        meals: meals.filter((m) => m.subscription_id === s.id),
+        payments: payments.filter((p) => p.subscription_id === s.id),
+      }));
     },
   });
 
-/** Repas restants (à venir, non pris, non annulés) d'un abonnement. */
-export function remainingMeals(sub: Subscription, today: string) {
-  return sub.meals.filter((m) => m.status === "prevu" && m.meal_date >= today).length;
+/** Repas encore disponibles (non utilisés par une commande). */
+export function remainingMeals(sub: Subscription) {
+  return sub.meals_count - sub.meals.filter((m) => m.status !== "annule").length;
+}
+
+/** Plat(s) commandé(s) pour le repas d'abonnement de ce jour. */
+export function mealDish(meal: Meal) {
+  const names = (meal.orders?.order_items ?? [])
+    .filter((i) => i.category === "plat" && i.day_date === meal.meal_date)
+    .map((i) => i.product_name);
+  return [...new Set(names)].join(", ");
 }
 
 /** Numéro lisible : 221781867272 → +221 78 186 72 72 (format sénégalais quand c'est possible). */
@@ -76,4 +119,32 @@ export function formatPhone(digits: string) {
   const m = digits.match(/^(221)?(\d{2})(\d{3})(\d{2})(\d{2})$/);
   if (!m) return digits;
   return `${m[1] ? "+221 " : ""}${m[2]} ${m[3]} ${m[4]} ${m[5]}`;
+}
+
+/** Lien WhatsApp avec un message prêt à envoyer (numéros sénégalais à 9 chiffres complétés). */
+export function whatsappLink(phone: string, text: string) {
+  const digits = phone.replace(/\D/g, "");
+  const intl = digits.length === 9 ? `221${digits}` : digits;
+  return `https://wa.me/${intl}?text=${encodeURIComponent(text)}`;
+}
+
+/** Message envoyé à l'abonné quand son repas est livré. */
+export function deliveredMessage(
+  sub: Pick<Subscription, "customer_name" | "meals_count" | "price" | "amount_paid">,
+  remaining: number,
+  siteName: string,
+) {
+  const balance = sub.price - sub.amount_paid;
+  return [
+    `Bonjour ${sub.customer_name}, votre repas est livré. Bon appétit ! 🍽️`,
+    remaining > 0
+      ? `Il vous reste ${remaining} repas sur ${sub.meals_count} dans votre abonnement.`
+      : "C'était le dernier repas de votre abonnement. Merci ! Vous pouvez vous réabonner sur notre site.",
+    balance > 0 && remaining > 0
+      ? `Reste à régler : ${new Intl.NumberFormat("fr-FR").format(balance)} FCFA, avant votre dernier repas.`
+      : "",
+    `— ${siteName}`,
+  ]
+    .filter(Boolean)
+    .join("\n");
 }
