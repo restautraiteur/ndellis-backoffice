@@ -1,4 +1,4 @@
-# Abonnements (« Mangez ici toute la semaine »)
+# Abonnements repas
 
 **Code :** site `src/features/subscriptions/` · back-office `src/features/admin/subscriptions/`
 **Pages :** site `/abonnement` (lien dans l'en-tête, le pied de page et un bandeau sur l'accueil) ·
@@ -7,14 +7,19 @@ back-office `/admin/abonnements`
 Fonctionnalité **générique** : à intégrer au modèle (`template-site`, `template-backoffice`).
 
 ## Côté client
-1. **La formule** : nombre de repas, prix, « livraison incluse », date de fin calculée.
-2. **Je commence le** : les prochains jours ouverts (à partir de demain).
-3. **Vos repas** : la liste des jours de repas, du lundi au vendredi, **en sautant les jours fermés**
-   (déclarés dans le calendrier des menus) : un jour fermé **décale la fin**.
-4. **Vos coordonnées** : nom, téléphone, adresse de livraison (facultative).
-5. **M'abonner** : pas de paiement en ligne ; le restaurant rappelle pour confirmer et encaisser.
-6. **Mon abonnement** : avec le **téléphone** seul, le client voit ses jours à venir, pris, passés, et ce
-   qu'il lui reste.
+Page en cinq parties : présentation (photos, atouts), « Comment ça marche » en 3 étapes, composition de
+l'abonnement, suivi, questions fréquentes.
+1. **Combien de repas ?** : cartes des formules avec le prix par repas ; badge « Meilleur prix par repas »
+   sur la formule la plus avantageuse.
+2. **À partir de quand ?** : calendrier du lundi au vendredi. On touche un jour de départ (à partir de
+   demain) ; les jours de repas s'allument et les **jours fermés** (déclarés dans le calendrier des menus)
+   apparaissent barrés : ils **décalent la fin**.
+3. **Vos coordonnées** : nom, téléphone, adresse de livraison (facultative).
+4. **Récapitulatif** (colonne fixe) : premier et dernier repas, prix par repas, total, bouton
+   « Réserver mes repas ». Pas de paiement en ligne : le restaurant rappelle pour confirmer et encaisser.
+   Après la réservation : « Suivre mes repas » ou « Abonner un proche ».
+5. **Suivez vos repas** : avec le **téléphone** seul, le client voit une barre de progression, le prochain
+   repas, et ses jours à venir, servis, passés ou annulés.
 
 ## Côté gérant
 - **Repas du jour** : les abonnés à servir un jour donné (nom, téléphone, adresse), bouton « Marquer pris ».

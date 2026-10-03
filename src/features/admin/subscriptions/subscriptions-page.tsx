@@ -45,7 +45,7 @@ export function SubscriptionsPage() {
     <div className="space-y-6">
       <PageHeader
         title="Abonnements"
-        description="Repas réservés d'avance par les abonnés (« Mangez ici toute la semaine »)."
+        description="Repas réservés d'avance par les abonnés."
       />
       <div role="tablist" className="flex w-fit flex-wrap rounded-lg bg-muted p-1">
         {TABS.map(([value, label]) => (
