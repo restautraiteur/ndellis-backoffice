@@ -273,3 +273,14 @@ tables** et **prise de commande par les serveurs** (sur téléphone ou tablette)
 - [ ] **Photos des plats** : elles pointent encore vers le stockage de l'ancienne base Lovable ; à réimporter depuis le catalogue.
 - [ ] **Témoignages** : remplacer les 5 avis d'exemple par de vrais avis clients.
 - [x] ~~Audit gérant, points critiques~~ : l'impression échappe désormais les données clients, et la suppression d'un produit demande une confirmation.
+
+
+## À intégrer au modèle
+
+Fonctionnalités génériques construites chez Ndelli's avant la création des modèles
+(`template-site`, `template-backoffice`) : à y reporter dès leur création (skill `restau-socle-modele`).
+
+| Fonctionnalité | Site | Back-office | Migration |
+| --- | --- | --- | --- |
+| Abonnements | `src/features/subscriptions/`, `src/routes/abonnement.tsx`, `src/config/client.ts` | `src/features/admin/subscriptions/`, `src/routes/admin/abonnements.tsx` | `20261003180000_abonnements.sql` |
+| Simulation (cuisson depuis le menu, invendus, prix du marché) | — | `src/features/admin/simulation/` | — |

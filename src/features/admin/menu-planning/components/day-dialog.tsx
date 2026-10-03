@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
+import { ChefHat, Trash2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@ui/components/ui/button";
 import { Input } from "@ui/components/ui/input";
 import { Switch } from "@ui/components/ui/switch";
@@ -18,6 +19,11 @@ import type { Product } from "@/features/admin/products/api";
 import { formatDay } from "@core/lib/format";
 import { AddProductForm } from "@/features/admin/menu-planning/components/add-product-form";
 import { MenuItemDialog } from "@/features/admin/menu-planning/components/menu-item-dialog";
+import { productionLogsQuery, type ProductionLog } from "@/features/admin/simulation/api";
+import {
+  ProductionDialog,
+  type ProductionPreset,
+} from "@/features/admin/simulation/components/production-dialog";
 import { ConfirmDialog, ProductThumb } from "@/features/admin/components/admin-ui";
 import { cn } from "@core/lib/utils";
 
@@ -51,6 +57,11 @@ export function DayDialog({
 }) {
   const [toRemove, setToRemove] = useState<MenuRow | null>(null);
   const [editing, setEditing] = useState<MenuRow | null>(null);
+  const [cooking, setCooking] = useState<{
+    preset: ProductionPreset;
+    log: ProductionLog | null;
+  } | null>(null);
+  const { data: logs = [] } = useQuery(productionLogsQuery());
 
   return (
     <Dialog open={day !== null} onOpenChange={(open) => !open && onClose()}>
@@ -105,7 +116,7 @@ export function DayDialog({
                 </p>
               ) : (
                 <div className="overflow-hidden rounded-lg border border-border">
-                  <div className="hidden grid-cols-[minmax(0,1fr)_7rem_6rem_4.5rem_2.5rem] gap-3 bg-muted/50 px-3 py-2 text-xs font-semibold text-muted-foreground sm:grid">
+                  <div className="hidden grid-cols-[minmax(0,1fr)_7rem_6rem_4.5rem_5.5rem] gap-3 bg-muted/50 px-3 py-2 text-xs font-semibold text-muted-foreground sm:grid">
                     <span>Plat</span>
                     <span>Prix (FCFA)</span>
                     <span>Portions</span>
@@ -117,7 +128,7 @@ export function DayDialog({
                       <li
                         key={row.day_product_id}
                         className={cn(
-                          "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_7rem_6rem_4.5rem_2.5rem]",
+                          "grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-2.5 sm:grid-cols-[minmax(0,1fr)_7rem_6rem_4.5rem_5.5rem]",
                           !row.is_active && "bg-muted/40",
                         )}
                       >
@@ -171,15 +182,37 @@ export function DayDialog({
                             onUpdateDayProduct(row.day_product_id, { is_active: checked })
                           }
                         />
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                          aria-label={`Retirer ${row.name} du menu`}
-                          onClick={() => setToRemove(row)}
-                        >
-                          <Trash2 />
-                        </Button>
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            title="Enregistrer la cuisson (ingrédients utilisés, plats obtenus)"
+                            aria-label={`Enregistrer la cuisson de ${row.name}`}
+                            onClick={() =>
+                              setCooking({
+                                preset: { productId: row.product_id, cookedOn: row.day_date },
+                                log:
+                                  logs.find(
+                                    (l) =>
+                                      l.day_product_id === row.day_product_id ||
+                                      (l.product_id === row.product_id &&
+                                        l.cooked_on === row.day_date),
+                                  ) ?? null,
+                              })
+                            }
+                          >
+                            <ChefHat />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                            aria-label={`Retirer ${row.name} du menu`}
+                            onClick={() => setToRemove(row)}
+                          >
+                            <Trash2 />
+                          </Button>
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -187,8 +220,9 @@ export function DayDialog({
               )}
               {rows.length > 0 && (
                 <p className="text-xs text-muted-foreground">
-                  Cliquez sur un plat pour voir et modifier son détail. Les prix et portions sont
-                  enregistrés dès que vous quittez le champ ou appuyez sur Entrée.
+                  Cliquez sur un plat pour voir et modifier son détail, et sur la toque pour
+                  enregistrer la cuisson. Les prix et portions sont enregistrés dès que vous quittez
+                  le champ ou appuyez sur Entrée.
                 </p>
               )}
             </section>
@@ -204,6 +238,12 @@ export function DayDialog({
         </DialogFooter>
 
         <MenuItemDialog row={editing} onClose={() => setEditing(null)} />
+        <ProductionDialog
+          open={cooking !== null}
+          preset={cooking?.preset ?? null}
+          log={cooking?.log ?? null}
+          onClose={() => setCooking(null)}
+        />
 
         <ConfirmDialog
           open={toRemove !== null}

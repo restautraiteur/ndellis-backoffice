@@ -69,7 +69,7 @@ export function SimulationPage() {
         />
       )}
       {tab === "production" && (
-        <ProductionPanel logs={logs} dishes={dishes} ingredients={ingredients} menu={menu} />
+        <ProductionPanel logs={logs} dishes={dishes} ingredients={ingredients} />
       )}
       {tab === "ingredients" && <IngredientsPanel ingredients={ingredients} />}
     </div>

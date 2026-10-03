@@ -1,4 +1,7 @@
 import { useMemo, useState } from "react";
+import { Copy, MessageCircle } from "lucide-react";
+import { toast } from "sonner";
+import { Button } from "@ui/components/ui/button";
 import { Input } from "@ui/components/ui/input";
 import { Label } from "@ui/components/ui/label";
 import { EmptyState } from "@/features/admin/components/admin-ui";
@@ -105,6 +108,54 @@ export function ForecastPanel({
   const realSpend = periodLogs.reduce((s, l) => s + logCost(l), 0);
   const hasReal = period.start <= today;
 
+  // Bilan des jours passés : plats obtenus (fiches), vendus (commandes), invendus perdus.
+  const dayReports = rows
+    .filter(({ row }) => row.day_date <= today)
+    .flatMap(({ row }) => {
+      const log = periodLogs.find(
+        (l) =>
+          l.day_product_id === row.day_product_id ||
+          (l.product_id === row.product_id && l.cooked_on === row.day_date),
+      );
+      if (!log) return [];
+      const unsold = Math.max(0, log.plates_obtained - row.stock_reserved);
+      const costPerPlate = logCost(log) / log.plates_obtained;
+      return [
+        {
+          obtained: log.plates_obtained,
+          sold: row.stock_reserved,
+          unsold,
+          loss: unsold * costPerPlate,
+        },
+      ];
+    });
+  const obtainedTotal = dayReports.reduce((s, d) => s + d.obtained, 0);
+  const soldTotal = dayReports.reduce((s, d) => s + Math.min(d.sold, d.obtained), 0);
+  const unsoldTotal = dayReports.reduce((s, d) => s + d.unsold, 0);
+  const lossTotal = Math.round(dayReports.reduce((s, d) => s + d.loss, 0));
+
+  // Liste de courses à partager (WhatsApp ou copier-coller)
+  const platesToCook = rows.reduce((s, r) => s + r.target, 0);
+  const shoppingText = [
+    `Courses — ${kind === "jour" ? formatDay(period.start) : `semaine du ${formatDay(period.start)}`} (${platesToCook} plats)`,
+    ...shopping.map(
+      (l) =>
+        `• ${l.ingredient.name} : ${formatAmount(l.quantity, l.ingredient.unit)}${
+          l.format ? ` (${l.count} × ${l.format.label})` : ""
+        } — ${formatPrice(l.cost)}`,
+    ),
+    `Total estimé : ${formatPrice(plannedSpend)}`,
+  ].join("\n");
+
+  async function copyShopping() {
+    try {
+      await navigator.clipboard.writeText(shoppingText);
+      toast.success("Liste de courses copiée");
+    } catch {
+      toast.error("Copie impossible : sélectionnez le texte manuellement.");
+    }
+  }
+
   return (
     <section className="space-y-6 rounded-xl border border-border bg-card p-5 shadow-sm">
       <div className="flex flex-wrap items-end justify-between gap-4">
@@ -208,7 +259,20 @@ export function ForecastPanel({
       {hasReal && (
         <div className="rounded-lg border border-border p-4">
           <p className="text-sm font-semibold">Réel à ce jour</p>
-          <div className="mt-2 grid gap-3 text-sm sm:grid-cols-3">
+          <div className="mt-2 grid gap-3 text-sm sm:grid-cols-3 lg:grid-cols-5">
+            <RealItem
+              label="Plats vendus / obtenus"
+              value={dayReports.length > 0 ? `${soldTotal} / ${obtainedTotal}` : "Aucune fiche"}
+            />
+            <RealItem
+              label="Invendus (perdus)"
+              value={
+                dayReports.length > 0
+                  ? `${unsoldTotal} plat${unsoldTotal > 1 ? "s" : ""} · ${formatPrice(lossTotal)}`
+                  : "—"
+              }
+              tone={unsoldTotal > 0 ? "text-destructive" : undefined}
+            />
             <RealItem label="Encaissé (commandes payées)" value={formatPrice(paid)} />
             <RealItem
               label="Dépensé (fiches de production)"
@@ -302,9 +366,50 @@ export function ForecastPanel({
         )}
       </div>
 
+      {/* Recette moyenne de chaque plat (calculée sur l'historique) */}
+      {rows.some((r) => r.ratio) && (
+        <div className="space-y-1 rounded-lg bg-muted/40 p-3 text-xs">
+          <p className="font-semibold text-foreground">Recette moyenne (pour 1 plat)</p>
+          {[...new Map(rows.filter((r) => r.ratio).map((r) => [r.row.product_id, r])).values()].map(
+            ({ row, ratio }) => (
+              <p key={row.product_id} className="text-muted-foreground">
+                <span className="font-medium text-foreground">{row.name}</span> :{" "}
+                {[...ratio!.perPlate]
+                  .map(([id, q]) => {
+                    const ingredient = ingredientById.get(id);
+                    return ingredient
+                      ? `${formatAmount(q, ingredient.unit)} ${ingredient.name}`
+                      : null;
+                  })
+                  .filter(Boolean)
+                  .join(" · ")}
+              </p>
+            ),
+          )}
+        </div>
+      )}
+
       {/* Liste de courses */}
       <div className="space-y-2">
-        <h3 className="text-sm font-semibold">Liste de courses</h3>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-sm font-semibold">Liste de courses</h3>
+          {shopping.length > 0 && (
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={copyShopping}>
+                <Copy className="size-4" /> Copier
+              </Button>
+              <Button size="sm" variant="outline" asChild>
+                <a
+                  href={`https://wa.me/?text=${encodeURIComponent(shoppingText)}`}
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  <MessageCircle className="size-4" /> WhatsApp
+                </a>
+              </Button>
+            </div>
+          )}
+        </div>
         {shopping.length === 0 ? (
           <p className="text-sm text-muted-foreground">
             Rien à calculer : remplissez des fiches de production pour ces plats.
@@ -328,7 +433,7 @@ export function ForecastPanel({
                       {formatAmount(l.quantity, l.ingredient.unit)}
                     </td>
                     <td className="px-3 py-2 text-right">
-                      {l.format ? `${l.count} × ${l.format.label}` : "aucun format"}
+                      {l.format ? `${l.count} × ${l.format.label}` : "quantité exacte"}
                     </td>
                     <td className="px-3 py-2 text-right font-semibold">{formatPrice(l.cost)}</td>
                   </tr>
@@ -382,7 +487,15 @@ function Figure({
   );
 }
 
-function RealItem({ label, value, tone }: { label: string; value: string; tone?: string }) {
+function RealItem({
+  label,
+  value,
+  tone,
+}: {
+  label: string;
+  value: string;
+  tone?: string | undefined;
+}) {
   return (
     <div>
       <p className="text-xs text-muted-foreground">{label}</p>

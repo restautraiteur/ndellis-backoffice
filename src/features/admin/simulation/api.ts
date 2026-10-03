@@ -24,8 +24,40 @@ export type Ingredient = {
   id: string;
   name: string;
   unit: string;
+  /** Prix de référence par unité de base (F/g, F/ml ou F/pièce) : le dernier prix payé au marché. */
+  price_per_unit: number;
   formats: IngredientFormat[];
 };
+
+/**
+ * Unités de saisie proposées pour chaque unité de base, avec leur facteur de conversion.
+ * La cuisinière saisit « 5 kg de riz » sans passer par un format d'achat.
+ */
+export const ENTRY_UNITS: Record<string, { value: string; label: string; factor: number }[]> = {
+  g: [
+    { value: "kg", label: "kg", factor: 1000 },
+    { value: "g", label: "g", factor: 1 },
+  ],
+  ml: [
+    { value: "L", label: "L", factor: 1000 },
+    { value: "ml", label: "ml", factor: 1 },
+  ],
+  piece: [{ value: "piece", label: "pièce(s)", factor: 1 }],
+};
+
+/** Unité d'affichage des prix : au kilo, au litre ou à la pièce. */
+export function priceUnit(unit: string) {
+  if (unit === "g") return { label: "kg", factor: 1000 };
+  if (unit === "ml") return { label: "L", factor: 1000 };
+  return { label: "pièce", factor: 1 };
+}
+
+/** Prix d'une unité de base : prix de référence, sinon prix du format habituel. */
+export function referencePrice(ingredient: Ingredient) {
+  if (ingredient.price_per_unit > 0) return ingredient.price_per_unit;
+  const format = defaultFormat(ingredient);
+  return format ? format.price / format.size : 0;
+}
 
 export type ProductionItem = {
   id: string;
@@ -54,12 +86,13 @@ export const ingredientsQuery = () =>
     queryFn: async () => {
       const [ingredients, formats] = await Promise.all([
         run<Omit<Ingredient, "formats">[]>(
-          db.from("ingredients").select("id, name, unit").order("name"),
+          db.from("ingredients").select("id, name, unit, price_per_unit").order("name"),
         ),
         run<IngredientFormat[]>(db.from("ingredient_formats").select("*").order("size")),
       ]);
       return ingredients.map((i) => ({
         ...i,
+        price_per_unit: Number(i.price_per_unit) || 0,
         formats: formats
           .filter((f) => f.ingredient_id === i.id)
           .map((f) => ({ ...f, size: Number(f.size) })),
@@ -159,8 +192,12 @@ export function shoppingList(
       const ingredient = ingredients.get(id);
       if (!ingredient || quantity <= 0) return [];
       const format = defaultFormat(ingredient);
+      // Avec un format : des unités entières. Sans format : la quantité exacte au prix de référence.
       const count = format ? Math.ceil(quantity / format.size - 1e-9) : 0;
-      return [{ ingredient, quantity, format, count, cost: format ? count * format.price : 0 }];
+      const cost = format
+        ? count * format.price
+        : Math.round(quantity * referencePrice(ingredient));
+      return [{ ingredient, quantity, format, count, cost }];
     })
     .sort((a, b) => b.cost - a.cost);
 }

@@ -16,6 +16,7 @@ le menu du lundi au vendredi. Les clients commandent sans créer de compte et pa
 | [Menu de la semaine](fonctionnalites/menu-de-la-semaine.md) | `src/features/menu/` | `/` |
 | [Panier](fonctionnalites/panier.md) | `src/features/cart/` | toutes |
 | [Commande et confirmation](fonctionnalites/commande.md) | `src/features/checkout/` | `/commande`, `/confirmation` |
+| [Abonnements](fonctionnalites/abonnements.md) | `src/features/admin/subscriptions/` | `/admin/abonnements` |
 | [Paiement PayDunya](fonctionnalites/paiement.md) | `src/features/payment/` | `/api/public/paydunya-ipn` |
 
 ### Côté gérant

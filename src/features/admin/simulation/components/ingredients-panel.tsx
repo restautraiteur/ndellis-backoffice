@@ -17,6 +17,8 @@ import { ConfirmDialog, EmptyState } from "@/features/admin/components/admin-ui"
 import {
   BASE_UNITS,
   defaultFormat,
+  priceUnit,
+  referencePrice,
   formatAmount,
   unitShort,
   type Ingredient,
@@ -32,6 +34,8 @@ type Draft = {
   id?: string;
   name: string;
   unit: string;
+  /** Prix de référence au kilo, au litre ou à la pièce (facultatif). */
+  refPrice: string;
   formats: FormatDraft[];
   defaultIndex: number;
 };
@@ -43,17 +47,26 @@ export function IngredientsPanel({ ingredients }: { ingredients: Ingredient[] })
   const [draft, setDraft] = useState<Draft | null>(null);
   const [toDelete, setToDelete] = useState<Ingredient | null>(null);
 
+  // Les formats d'achat sont facultatifs : la cuisinière peut tout saisir en kg, L ou pièces.
   const formatsValid =
     !!draft &&
-    draft.formats.length > 0 &&
     draft.formats.every(
       (f) => f.label.trim() && Number(f.size) > 0 && f.price.trim() !== "" && Number(f.price) >= 0,
     );
-  const valid = !!draft?.name.trim() && formatsValid;
+  const refPriceValid =
+    !draft ||
+    draft.refPrice.trim() === "" ||
+    (Number(draft.refPrice) >= 0 && !isNaN(Number(draft.refPrice)));
+  const valid = !!draft?.name.trim() && formatsValid && refPriceValid;
 
   const save = useMutation({
     mutationFn: async (value: Draft) => {
-      const payload = { name: value.name.trim(), unit: value.unit };
+      const factor = priceUnit(value.unit).factor;
+      const payload = {
+        name: value.name.trim(),
+        unit: value.unit,
+        price_per_unit: value.refPrice.trim() === "" ? 0 : Number(value.refPrice) / factor,
+      };
       let id = value.id;
       if (id) {
         const { error } = await db.from("ingredients").update(payload).eq("id", id);
@@ -75,6 +88,7 @@ export function IngredientsPanel({ ingredients }: { ingredients: Ingredient[] })
         .delete()
         .eq("ingredient_id", id);
       if (deleteError) throw new Error(deleteError.message);
+      if (value.formats.length === 0) return;
       const { error: insertError } = await db.from("ingredient_formats").insert(
         value.formats.map((f, index) => ({
           ingredient_id: id,
@@ -118,6 +132,10 @@ export function IngredientsPanel({ ingredients }: { ingredients: Ingredient[] })
       id: ingredient.id,
       name: ingredient.name,
       unit: ingredient.unit,
+      refPrice:
+        ingredient.price_per_unit > 0
+          ? String(Math.round(ingredient.price_per_unit * priceUnit(ingredient.unit).factor))
+          : "",
       formats: ingredient.formats.map((f) => ({
         label: f.label,
         size: String(f.size),
@@ -144,13 +162,13 @@ export function IngredientsPanel({ ingredients }: { ingredients: Ingredient[] })
         <div>
           <h2 className="font-semibold">Ingrédients</h2>
           <p className="text-sm text-muted-foreground">
-            Chaque ingrédient avec les formats dans lesquels vous l'achetez (boîte 300 g, 500 g, 1
-            kg…).
+            Chaque ingrédient, son prix au kilo, au litre ou à la pièce (mis à jour avec le dernier
+            prix payé au marché) et, si besoin, ses formats d'achat (boîte 500 g…).
           </p>
         </div>
         <Button
           onClick={() =>
-            setDraft({ name: "", unit: "g", formats: [{ ...EMPTY_FORMAT }], defaultIndex: 0 })
+            setDraft({ name: "", unit: "g", refPrice: "", formats: [], defaultIndex: 0 })
           }
         >
           <Plus className="size-4" /> Nouvel ingrédient
@@ -172,11 +190,17 @@ export function IngredientsPanel({ ingredients }: { ingredients: Ingredient[] })
                   <p className="font-medium">{ingredient.name}</p>
                   <p className="text-xs text-muted-foreground">
                     Mesuré en {unitShort(ingredient.unit)}
+                    {referencePrice(ingredient) > 0 &&
+                      ` · ${formatPrice(
+                        Math.round(referencePrice(ingredient) * priceUnit(ingredient.unit).factor),
+                      )} / ${priceUnit(ingredient.unit).label}`}
                   </p>
                 </div>
                 <div className="flex flex-[2] flex-wrap gap-1.5">
                   {ingredient.formats.length === 0 && (
-                    <span className="text-xs text-destructive">Aucun format : ajoutez-en un.</span>
+                    <span className="text-xs text-muted-foreground">
+                      Sans format : saisie en {priceUnit(ingredient.unit).label}
+                    </span>
                   )}
                   {ingredient.formats.map((f) => (
                     <span
@@ -256,7 +280,25 @@ export function IngredientsPanel({ ingredients }: { ingredients: Ingredient[] })
               </div>
 
               <div className="space-y-2">
-                <p className="text-sm font-medium">Formats d'achat</p>
+                <Label htmlFor="ing-price">
+                  Prix {draft.unit === "piece" ? "à la pièce" : `au ${priceUnit(draft.unit).label}`}{" "}
+                  (FCFA, facultatif)
+                </Label>
+                <Input
+                  id="ing-price"
+                  type="number"
+                  min={0}
+                  placeholder="Ex. 900"
+                  value={draft.refPrice}
+                  onChange={(e) => setDraft({ ...draft, refPrice: e.target.value })}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Mis à jour automatiquement avec le prix payé lors de chaque cuisson.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Formats d'achat (facultatif)</p>
                 <div className="hidden grid-cols-[2rem_1fr_7rem_7rem_2rem] gap-2 px-1 text-xs text-muted-foreground sm:grid">
                   <span />
                   <span>Libellé</span>
@@ -296,7 +338,7 @@ export function IngredientsPanel({ ingredients }: { ingredients: Ingredient[] })
                       variant="ghost"
                       className="sm:order-last"
                       aria-label="Retirer ce format"
-                      disabled={draft.formats.length === 1}
+
                       onClick={() =>
                         setDraft({
                           ...draft,

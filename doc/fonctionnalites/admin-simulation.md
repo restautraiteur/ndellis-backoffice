@@ -8,55 +8,56 @@ partir de ce qui s'est réellement passé lors des cuissons précédentes.
 
 **Route :** `/admin/simulation` (menu « Simulation » de l'espace gérant)
 
-## Le flow
+## Le flow (la journée d'un plat)
 
 ```
-① Ingrédients (une fois)      ② Journal de production (après chaque cuisson)     ③ Prévisions
-Tomate concentrée (g)          Lundi · Riz méditerranéen                          Lundi prochain
-  boîte 300 g · 450 F           2 × boîte 500 g + 1 × boîte 300 g de tomate        47 précommandes
-  boîte 500 g · 700 F ★         1 × sac 5 kg de riz …                              60 à cuisiner
-  boîte 1 kg · 1 300 F          → 52 plats obtenus                         ──►     → liste de courses
-                                                                                    → dépense, recette,
-                                                                                      bénéfice
+LE MATIN (marché)                    APRÈS LA CUISSON                       LE SOIR (automatique)
+Liste de courses prête :             Menus › plat du jour › 🧑‍🍳 Cuisson       Prévisions › Réel à ce jour
+calculée sur les cuissons            • ingrédients utilisés (5 kg riz…)     • plats vendus / obtenus
+précédentes, à copier ou à           • prix payé (facultatif)               • invendus perdus (en F)
+envoyer sur WhatsApp                 • plats obtenus : 52                   • encaissé, dépensé
+                                     → le STOCK du plat passe à 52          • bénéfice réel
 ```
 
-### 1. Ingrédients
-- Chaque ingrédient est mesuré dans une **unité de base** : grammes, millilitres ou pièces.
-- Il a un ou plusieurs **formats d'achat**, chacun avec sa contenance et son prix : boîte 300 g,
-  boîte 500 g, boîte 1 kg, sac 5 kg, au kilo (1 000 g), plateau de 30 œufs…
-- L'étoile ★ marque le **format habituel**, utilisé pour la liste de courses. Sans étoile, le format
-  le moins cher au gramme est utilisé.
-- Les **emballages et le gaz** se gèrent comme des ingrédients (ex. « Barquette », en pièces) pour
-  être comptés dans les dépenses.
+Un plat par jour de courses. Les invendus sont perdus : ils sont comptés comme une perte.
 
-### 2. Journal de production
-- Après chaque cuisson, une fiche : le plat, la date, les **plats obtenus** et chaque ingrédient
-  utilisé, sous la forme **nombre × format**. On peut mélanger les formats sur deux lignes
-  (2 boîtes de 500 g + 1 boîte de 300 g).
-- La fiche calcule la dépense de la cuisson et le coût par plat, au prix des formats au moment
-  de l'enregistrement.
-- Une cuisson ratée peut être **écartée** : elle reste visible mais n'entre plus dans les calculs.
-- La fiche est liée automatiquement au plat du menu de ce jour-là s'il existe.
+### 1. Ingrédients (une fois)
+- Nom et unité de base : grammes, millilitres ou pièces.
+- **Prix au kilo, au litre ou à la pièce** : facultatif, et **mis à jour automatiquement avec le dernier prix
+  payé au marché** lors de chaque cuisson.
+- **Formats d'achat** (boîte 500 g, sac 5 kg…) : facultatifs. S'il y en a, la liste de courses les utilise
+  (arrondi à l'unité supérieure) ; sinon elle donne la quantité exacte.
+- Les emballages et le gaz peuvent être des ingrédients (« Barquette », en pièces) pour compter dans les dépenses.
+
+### 2. Enregistrer la cuisson (chaque jour)
+- **Depuis Menus** : sur le plat du jour, bouton **toque (Cuisson)**. Le plat et la date sont pré-remplis ;
+  si une fiche existe déjà pour ce jour, elle s'ouvre pour modification. Aussi possible depuis
+  Simulation › Journal de production.
+- Pour chaque ingrédient : **quantité** dans l'unité de son choix (kg, g, L, ml, pièces ou un format d'achat)
+  et **prix payé** facultatif (sans prix : dernier prix connu).
+- **Plats obtenus** (au moins le nombre déjà commandé).
+- À l'enregistrement : **le stock du plat du jour prend le nombre de plats obtenus** (les clients peuvent
+  commander) et les prix payés deviennent les nouveaux prix de référence.
+- Une cuisson ratée peut être **écartée** des calculs depuis le journal.
 
 ### 3. Prévisions (jour ou semaine)
-- Pour chaque plat de la période : précommandes, portions prévues, et **plats à cuisiner**
-  (modifiable). Par défaut, ce sont les portions prévues, et au moins les précommandes. Une alerte
-  s'affiche s'il y a moins de plats que de précommandes.
-- **Somme à recevoir** :
-  - *assurée* : total des commandes de la période (plats et jus), hors commandes annulées ;
-  - *dont déjà payée* : commandes au statut « Payé » ;
-  - *si tout est vendu* : assurée + les plats à cuisiner non encore commandés × prix du jour.
-- **Dépenses prévues** : coût des formats à acheter d'après la liste de courses.
-- **Bénéfice prévu** : si tout est vendu, et avec les seules commandes.
-- **Réel à ce jour** (jours passés ou en cours) : encaissé, dépensé (fiches de production) et
-  bénéfice réel.
+- **Somme à recevoir** (assurée par les commandes, dont déjà payée, et si tout est vendu), **dépenses
+  prévues**, **bénéfice prévu**.
+- **Réel à ce jour** : plats vendus / obtenus, **invendus perdus** (nombre et valeur au coût du plat),
+  encaissé, dépensé, bénéfice réel.
+- **Plats à cuisiner** : précommandes, portions prévues, nombre à cuisiner modifiable, alerte s'il est
+  inférieur aux précommandes.
+- **Recette moyenne** de chaque plat (pour 1 plat), calculée sur l'historique.
+- **Liste de courses** dans les formats habituels ou en quantité exacte, avec boutons **Copier** et
+  **WhatsApp**.
 
 ## Règles de calcul
 - **Quantité par plat** d'un ingrédient = total utilisé sur les **3 dernières cuissons non
   écartées** du plat ÷ total des plats obtenus sur ces cuissons.
 - **Quantité nécessaire** = quantité par plat × plats à cuisiner.
 - **À acheter** = quantité nécessaire ÷ contenance du format habituel, **arrondi au-dessus**
-  (1,38 kg de tomate → 3 boîtes de 500 g).
+  (1,38 kg de tomate → 3 boîtes de 500 g). Sans format : la quantité exacte au prix de référence.
+- **Invendus** = plats obtenus − plats commandés ; **perte** = invendus × (dépense de la cuisson ÷ plats obtenus).
 - Un plat **sans fiche de production** est signalé « pas encore d'historique » et n'est pas compté
   dans les dépenses.
 
@@ -76,7 +77,8 @@ Migration : `supabase/migrations/20261003100000_journal_production.sql`.
 | `api.ts` | Types, requêtes et calculs (`dishRatio`, `shoppingList`, `defaultFormat`…) |
 | `simulation-page.tsx` | Page et onglets |
 | `components/forecast-panel.tsx` | Prévisions : trois chiffres, plats à cuisiner, liste de courses |
-| `components/production-panel.tsx` | Journal et fiche de production |
+| `components/production-panel.tsx` | Journal des cuissons |
+| `components/production-dialog.tsx` | Fiche de cuisson (aussi ouverte depuis Menus), mise à jour du stock et des prix |
 | `components/ingredients-panel.tsx` | Ingrédients et formats d'achat |
 
 ## Pour plus tard

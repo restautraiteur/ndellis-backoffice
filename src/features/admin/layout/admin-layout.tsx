@@ -11,6 +11,7 @@ import {
   Package,
   ShoppingBag,
   Calculator,
+  CalendarCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@ui/components/ui/button";
@@ -36,6 +37,7 @@ const NAV = [
   { to: "/admin/weeks", label: "Menus", icon: CalendarRange, exact: false },
   { to: "/admin/products", label: "Catalogue", icon: Package, exact: false },
   { to: "/admin/reports", label: "Bilan", icon: ChartColumn, exact: false },
+  { to: "/admin/abonnements", label: "Abonnements", icon: CalendarCheck, exact: false },
   { to: "/admin/simulation", label: "Simulation", icon: Calculator, exact: false },
 ] as const;
 
