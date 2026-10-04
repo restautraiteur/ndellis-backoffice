@@ -88,3 +88,28 @@ Migration : `supabase/migrations/20261003100000_journal_production.sql`.
 - Charges fixes (loyer, salaires), réparties sur le mois, pour le vrai bénéfice net.
 - Choix automatique de la meilleure combinaison de formats (1 boîte de 1 kg + 1 de 500 g…).
 - Lien avec le module Caisse & dépenses : prix des formats mis à jour par les achats saisis.
+
+## Simuler à partir d'une journée de référence (onglet « Simuler »)
+
+**1. Fin de journée → « Ajouter comme référence »** (tableau de bord, à côté de chaque plat du jour,
+aujourd'hui ou un jour passé). La fiche de cuisson s'ouvre en mode référence :
+- plats **préparés**, plats **vendus** (repris des commandes, repas d'abonnés compris, modifiable),
+  invendus, **chiffre d'affaires** (vendus × prix du plat), « épuisé » ;
+- les **achats** de ce plat (quantité, unité, prix payé facultatif). Si la cuisson a déjà été notée,
+  ils sont repris.
+La journée est enregistrée comme référence (`production_logs.is_reference`, `plates_sold`, `revenue`,
+`sold_out`, `closed_at` — migration `20261004090000_references_simulation.sql`).
+
+**2. Simuler** : un plat, le menu d'un jour (2 plats ou plus) ou la semaine.
+- Une référence par plat : la plus récente par défaut, ou une autre au choix.
+- Quantité : ÷ 2, même quantité, × 1,5, × 2 pour tous les plats ; par plat, un nombre de plats à
+  préparer ; ou une quantité d'ingrédient (« 8 kg de viande au lieu de 5 ») — le reste suit en
+  proportion.
+- Résultat par plat et au total : plats préparés, ventes estimées (même taux de vente qu'à la
+  référence), chiffre d'affaires (prix actuel), coût des ingrédients (derniers prix connus), bénéfice,
+  liste de courses (Copier, WhatsApp).
+- **Appliquer au menu** : met les quantités comme stock des plats au menu à venir (jamais moins que
+  les plats déjà commandés).
+
+**3. Comparer** : le jour simulé, le tableau de bord montre le réel ; ce jour peut devenir à son tour
+une référence.

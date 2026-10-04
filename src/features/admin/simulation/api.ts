@@ -77,8 +77,20 @@ export type ProductionLog = {
   plates_obtained: number;
   excluded: boolean;
   notes: string | null;
+  /** Journée clôturée et gardée comme base de simulation. */
+  is_reference: boolean;
+  plates_sold: number | null;
+  revenue: number | null;
+  sold_out: boolean | null;
   items: ProductionItem[];
 };
+
+/** Références d'un plat, la plus récente d'abord. */
+export function dishReferences(productId: string, logs: ProductionLog[]) {
+  return logs
+    .filter((l) => l.product_id === productId && l.is_reference && l.items.length > 0)
+    .sort((a, b) => b.cooked_on.localeCompare(a.cooked_on));
+}
 
 export const ingredientsQuery = () =>
   queryOptions({

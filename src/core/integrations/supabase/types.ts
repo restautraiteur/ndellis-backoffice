@@ -459,39 +459,54 @@ export type Database = {
       };
       production_logs: {
         Row: {
+          closed_at: string | null;
           cooked_on: string;
           created_at: string;
           created_by: string | null;
           day_product_id: string | null;
           excluded: boolean;
           id: string;
+          is_reference: boolean;
           notes: string | null;
           plates_obtained: number;
+          plates_sold: number | null;
           product_id: string;
+          revenue: number | null;
+          sold_out: boolean | null;
           updated_at: string;
         };
         Insert: {
+          closed_at?: string | null;
           cooked_on?: string;
           created_at?: string;
           created_by?: string | null;
           day_product_id?: string | null;
           excluded?: boolean;
           id?: string;
+          is_reference?: boolean;
           notes?: string | null;
           plates_obtained: number;
+          plates_sold?: number | null;
           product_id: string;
+          revenue?: number | null;
+          sold_out?: boolean | null;
           updated_at?: string;
         };
         Update: {
+          closed_at?: string | null;
           cooked_on?: string;
           created_at?: string;
           created_by?: string | null;
           day_product_id?: string | null;
           excluded?: boolean;
           id?: string;
+          is_reference?: boolean;
           notes?: string | null;
           plates_obtained?: number;
+          plates_sold?: number | null;
           product_id?: string;
+          revenue?: number | null;
+          sold_out?: boolean | null;
           updated_at?: string;
         };
         Relationships: [

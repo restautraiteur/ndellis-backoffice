@@ -35,11 +35,16 @@ type Draft = {
   productId: string;
   cookedOn: string;
   plates: string;
+  /** Mode référence : plats vendus ce jour-là. */
+  sold: string;
   notes: string;
   lines: Line[];
 };
 
 export type ProductionPreset = { productId: string; cookedOn: string };
+
+/** Clôture de journée : plats vendus (commandes, repas d'abonnés compris) et prix de vente. */
+export type ReferencePreset = { sold: number; price: number };
 
 function defaultUnit(ingredient: Ingredient | undefined) {
   if (!ingredient) return "";
@@ -66,11 +71,14 @@ export function ProductionDialog({
   onClose,
   preset,
   log,
+  reference,
 }: {
   open: boolean;
   onClose: () => void;
   preset?: ProductionPreset | null;
   log?: ProductionLog | null;
+  /** Ouvre la fiche en mode « Ajouter comme référence pour la simulation ». */
+  reference?: ReferencePreset | null;
 }) {
   const queryClient = useQueryClient();
   const { data: ingredients = [] } = useQuery(ingredientsQuery());
@@ -92,6 +100,7 @@ export function ProductionDialog({
         productId: log.product_id,
         cookedOn: log.cooked_on,
         plates: String(log.plates_obtained),
+        sold: String(reference?.sold ?? log.plates_sold ?? ""),
         notes: log.notes ?? "",
         lines: log.items.map((item) => {
           const ingredient = ingredientById.get(item.ingredient_id);
@@ -114,6 +123,7 @@ export function ProductionDialog({
       productId: preset?.productId ?? todayDish?.product_id ?? dishes[0]?.id ?? "",
       cookedOn: preset?.cookedOn ?? todayISO(),
       plates: "",
+      sold: reference ? String(reference.sold) : "",
       notes: "",
       lines: [],
     });
@@ -141,6 +151,10 @@ export function ProductionDialog({
   const menuRow = draft
     ? menu.find((m) => m.product_id === draft.productId && m.day_date === draft.cookedOn)
     : undefined;
+  const sold = Number(draft?.sold);
+  const soldValid =
+    !reference || (Number.isInteger(sold) && sold >= 0 && (!(plates > 0) || sold <= plates));
+  const revenue = reference && soldValid ? sold * reference.price : 0;
   const minPlates = Math.max(1, menuRow?.stock_reserved ?? 0);
   const valid =
     !!draft?.productId &&
@@ -148,7 +162,8 @@ export function ProductionDialog({
     Number.isInteger(plates) &&
     plates >= minPlates &&
     computed.length > 0 &&
-    computed.every((c) => c.ok);
+    computed.every((c) => c.ok) &&
+    soldValid;
   const total = computed.reduce((s, c) => s + c.cost, 0);
 
   const save = useMutation({
@@ -159,6 +174,15 @@ export function ProductionDialog({
         cooked_on: value.cookedOn,
         plates_obtained: plates,
         notes: value.notes.trim() || null,
+        ...(reference
+          ? {
+              is_reference: true,
+              plates_sold: sold,
+              revenue,
+              sold_out: sold >= plates,
+              closed_at: new Date().toISOString(),
+            }
+          : {}),
       };
       let id = value.id;
       if (id) {
@@ -211,9 +235,11 @@ export function ProductionDialog({
       queryClient.invalidateQueries({ queryKey: ["ingredients"] });
       queryClient.invalidateQueries({ queryKey: ["menu"] });
       toast.success(
-        stockUpdated
-          ? `Cuisson enregistrée : stock du plat mis à ${plates}`
-          : "Cuisson enregistrée",
+        reference
+          ? "Journée ajoutée comme référence pour la simulation"
+          : stockUpdated
+            ? `Cuisson enregistrée : stock du plat mis à ${plates}`
+            : "Cuisson enregistrée",
       );
       onClose();
     },
@@ -232,10 +258,17 @@ export function ProductionDialog({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[92vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{draft?.id ? "Modifier la cuisson" : "Enregistrer la cuisson"}</DialogTitle>
+          <DialogTitle>
+            {reference
+              ? "Ajouter comme référence pour la simulation"
+              : draft?.id
+                ? "Modifier la cuisson"
+                : "Enregistrer la cuisson"}
+          </DialogTitle>
           <DialogDescription>
-            Ce que vous avez utilisé et le nombre de plats obtenus. Le prix payé est facultatif :
-            sans prix, le dernier prix connu est utilisé.
+            {reference
+              ? "Ce que vous avez acheté pour ce plat, les plats préparés et vendus : la simulation repartira de cette journée pour calculer les quantités et le chiffre d'affaires."
+              : "Ce que vous avez utilisé et le nombre de plats obtenus. Le prix payé est facultatif : sans prix, le dernier prix connu est utilisé."}
           </DialogDescription>
         </DialogHeader>
         {draft && (
@@ -267,7 +300,7 @@ export function ProductionDialog({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="pd-plates">Plats obtenus</Label>
+                <Label htmlFor="pd-plates">{reference ? "Plats préparés" : "Plats obtenus"}</Label>
                 <Input
                   id="pd-plates"
                   type="number"
@@ -278,6 +311,46 @@ export function ProductionDialog({
                 />
               </div>
             </div>
+            {reference && (
+              <div className="grid gap-4 rounded-lg border border-primary/30 bg-primary/5 p-4 sm:grid-cols-3">
+                <div className="space-y-2">
+                  <Label htmlFor="pd-sold">Plats vendus</Label>
+                  <Input
+                    id="pd-sold"
+                    type="number"
+                    min={0}
+                    value={draft.sold}
+                    onChange={(e) => setDraft({ ...draft, sold: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Invendus</p>
+                  <p className="mt-2 text-lg font-semibold">
+                    {plates > 0 && soldValid ? Math.max(0, plates - sold) : "—"}
+                    {plates > 0 && soldValid && sold >= plates && (
+                      <span className="ml-2 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">
+                        épuisé
+                      </span>
+                    )}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">
+                    Chiffre d'affaires ({formatPrice(reference.price)} le plat)
+                  </p>
+                  <p className="mt-2 text-lg font-semibold">{formatPrice(revenue)}</p>
+                </div>
+                <p className="text-xs text-muted-foreground sm:col-span-3">
+                  Rempli à partir des commandes du jour, repas d'abonnés compris. Corrigez si besoin
+                  (ventes sur place, plats offerts…).
+                </p>
+                {!soldValid && (
+                  <p className="text-xs text-destructive sm:col-span-3">
+                    Les plats vendus ne peuvent pas dépasser les plats préparés.
+                  </p>
+                )}
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">
               {menuRow
                 ? `Au menu du ${formatDay(draft.cookedOn)} : le stock du plat passera à ${

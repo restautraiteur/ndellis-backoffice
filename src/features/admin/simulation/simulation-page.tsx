@@ -7,10 +7,12 @@ import { ingredientsQuery, productionLogsQuery } from "@/features/admin/simulati
 import { ForecastPanel } from "@/features/admin/simulation/components/forecast-panel";
 import { IngredientsPanel } from "@/features/admin/simulation/components/ingredients-panel";
 import { ProductionPanel } from "@/features/admin/simulation/components/production-panel";
+import { ReferenceSimulator } from "@/features/admin/simulation/components/reference-simulator";
 import { adminMenuQuery } from "@core/domain/menu/api";
 import { cn } from "@core/lib/utils";
 
 const TABS = [
+  ["simuler", "Simuler"],
   ["previsions", "Prévisions"],
   ["production", "Journal de production"],
   ["ingredients", "Ingrédients"],
@@ -19,7 +21,7 @@ const TABS = [
 type Tab = (typeof TABS)[number][0];
 
 export function SimulationPage() {
-  const [tab, setTab] = useState<Tab>("previsions");
+  const [tab, setTab] = useState<Tab>("simuler");
   const { data: ingredients = [] } = useQuery(ingredientsQuery());
   const { data: logs = [] } = useQuery(productionLogsQuery());
   const { data: products = [] } = useQuery(productsQuery());
@@ -32,7 +34,7 @@ export function SimulationPage() {
     <div className="space-y-6">
       <PageHeader
         title="Simulation"
-        description="Dépenses, somme à recevoir et bénéfice, calculés à partir de vos cuissons réelles."
+        description="Repartez d'une journée de référence pour prévoir les plats, les courses et le chiffre d'affaires."
       />
 
       <div
@@ -59,6 +61,9 @@ export function SimulationPage() {
         ))}
       </div>
 
+      {tab === "simuler" && (
+        <ReferenceSimulator menu={menu} products={products} ingredients={ingredients} logs={logs} />
+      )}
       {tab === "previsions" && (
         <ForecastPanel
           menu={menu}

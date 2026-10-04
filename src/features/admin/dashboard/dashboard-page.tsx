@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   ClipboardList,
+  FlaskConical,
   Gauge,
   Printer,
   Receipt,
@@ -40,6 +41,8 @@ import {
 import { addDays } from "@/features/admin/menu-planning/calendar";
 import { EmptyState, PageHeader, ProductThumb } from "@/features/admin/components/admin-ui";
 import { cn } from "@core/lib/utils";
+import { productionLogsQuery } from "@/features/admin/simulation/api";
+import { ProductionDialog } from "@/features/admin/simulation/components/production-dialog";
 
 const CHART_DAYS = 7;
 // Les attributs SVG de recharts ne résolvent pas les variables CSS : valeurs du thème gérant (styles.css).
@@ -77,6 +80,10 @@ export function Dashboard() {
   const { data: menu = [] } = useQuery(adminMenuQuery());
   const today = todayISO();
   const [day, setDay] = useState(today);
+  const { data: logs = [] } = useQuery(productionLogsQuery());
+  const [referenceDish, setReferenceDish] = useState<MenuRow | null>(null);
+  const logFor = (dish: MenuRow) =>
+    logs.find((l) => l.product_id === dish.product_id && l.cooked_on === dish.day_date) ?? null;
 
   const cancelledIds = useMemo(
     () => new Set(orders.filter((o) => o.status === "annulee").map((o) => o.id)),
@@ -321,7 +328,16 @@ export function Dashboard() {
           ) : (
             <ul className="divide-y divide-border">
               {dishes.map((dish) => (
-                <DishRow key={dish.day_product_id} dish={dish} />
+                <DishRow
+                  key={dish.day_product_id}
+                  dish={dish}
+                  isReference={logFor(dish)?.is_reference ?? false}
+                  onReference={
+                    dish.category === "plat" && dish.day_date <= today
+                      ? () => setReferenceDish(dish)
+                      : undefined
+                  }
+                />
               ))}
             </ul>
           )}
@@ -522,6 +538,19 @@ export function Dashboard() {
           )}
         </Panel>
       </div>
+      <ProductionDialog
+        open={referenceDish !== null}
+        onClose={() => setReferenceDish(null)}
+        preset={
+          referenceDish
+            ? { productId: referenceDish.product_id, cookedOn: referenceDish.day_date }
+            : null
+        }
+        log={referenceDish ? logFor(referenceDish) : null}
+        reference={
+          referenceDish ? { sold: referenceDish.stock_reserved, price: referenceDish.price } : null
+        }
+      />
     </div>
   );
 }
@@ -536,7 +565,16 @@ function shortDay(iso: string) {
   }).format(new Date(`${iso}T00:00:00Z`));
 }
 
-function DishRow({ dish }: { dish: MenuRow }) {
+function DishRow({
+  dish,
+  isReference,
+  onReference,
+}: {
+  dish: MenuRow;
+  isReference: boolean;
+  /** Fin de journée : garder ce plat comme référence pour la simulation. */
+  onReference?: (() => void) | undefined;
+}) {
   const level = dishLevel(dish);
   const ratio = dish.stock_initial > 0 ? Math.min(1, dish.stock_reserved / dish.stock_initial) : 0;
   return (
@@ -571,6 +609,20 @@ function DishRow({ dish }: { dish: MenuRow }) {
           </span>
         </div>
       </div>
+      {onReference && (
+        <Button
+          size="sm"
+          variant={isReference ? "secondary" : "outline"}
+          className="shrink-0"
+          title="Garder cette journée (achats, plats préparés et vendus) comme base de simulation"
+          onClick={onReference}
+        >
+          <FlaskConical className="size-4" />
+          <span className="hidden sm:inline">
+            {isReference ? "Référence ✓" : "Ajouter comme référence"}
+          </span>
+        </Button>
+      )}
     </li>
   );
 }
