@@ -13,6 +13,7 @@ export const PAYMENT_STATUS_TONES: Record<string, string> = {
   echec_paiement: "bg-rose-100 text-rose-900 ring-rose-300",
   acompte_a_verifier: "bg-orange-100 text-orange-900 ring-orange-300",
   acompte_paye: "bg-sky-100 text-sky-900 ring-sky-300",
+  a_la_livraison: "bg-amber-100 text-amber-900 ring-amber-300",
   paye: "bg-emerald-100 text-emerald-900 ring-emerald-300",
   abonnement: "bg-sky-100 text-sky-900 ring-sky-300",
 };

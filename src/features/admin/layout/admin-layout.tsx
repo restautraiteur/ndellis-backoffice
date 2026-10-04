@@ -8,6 +8,7 @@ import {
   ExternalLink,
   LayoutDashboard,
   LogOut,
+  Menu,
   Package,
   ShoppingBag,
   Calculator,
@@ -15,6 +16,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@ui/components/ui/button";
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@ui/components/ui/sheet";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -218,7 +220,8 @@ export function AdminShell({
       {/* Barre du haut : notifications et compte */}
       <header className="sticky top-0 z-20 border-b border-border bg-card/95 backdrop-blur">
         <div className="flex h-16 items-center gap-4 px-4 sm:px-6 lg:px-8">
-          <div className="lg:hidden">
+          <div className="flex items-center gap-2 lg:hidden">
+            <MobileNav newOrders={newOrders} onSignOut={onSignOut} />
             <Brand />
           </div>
           <p className="hidden text-sm text-muted-foreground lg:block">
@@ -267,34 +270,81 @@ export function AdminShell({
         </div>
       </header>
 
-      <main className="px-4 pb-28 pt-6 sm:px-6 lg:px-8 lg:pb-12 lg:pt-8">{children}</main>
-
-      {/* Onglets du bas (téléphone et tablette) */}
-      <nav
-        aria-label="Navigation gérant"
-        className="fixed inset-x-0 bottom-0 z-30 grid grid-cols-5 border-t border-border bg-card pb-[env(safe-area-inset-bottom)] lg:hidden"
-      >
-        {NAV.map((item) => (
-          <Link
-            key={item.to}
-            to={item.to}
-            activeOptions={{ exact: item.exact }}
-            className="flex h-16 flex-col items-center justify-center gap-1 text-[11px] font-medium text-muted-foreground focus-visible:outline-2 focus-visible:-outline-offset-4 focus-visible:outline-ring"
-            activeProps={{ className: "!text-primary" }}
-          >
-            <span className="relative">
-              <item.icon className="size-5" />
-              {item.to === "/admin/orders" && newOrders > 0 && (
-                <span className="absolute -right-3.5 -top-2">
-                  <NewBadge count={newOrders} />
-                </span>
-              )}
-            </span>
-            {item.to === "/admin" ? "Accueil" : item.label}
-          </Link>
-        ))}
-      </nav>
+      <main className="px-4 pb-12 pt-6 sm:px-6 lg:px-8 lg:pt-8">{children}</main>
     </div>
+  );
+}
+
+/** Téléphone et tablette : bouton menu (comme sur le site) qui ouvre la liste des pages. */
+function MobileNav({ newOrders, onSignOut }: { newOrders: number; onSignOut: () => void }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Sheet open={open} onOpenChange={setOpen}>
+      <SheetTrigger asChild>
+        <button
+          type="button"
+          aria-label="Ouvrir le menu"
+          className="relative flex size-10 items-center justify-center rounded-full border border-border hover:bg-muted"
+        >
+          <Menu className="size-5" />
+          {newOrders > 0 && (
+            <span className="absolute -right-1 -top-1">
+              <NewBadge count={newOrders} />
+            </span>
+          )}
+        </button>
+      </SheetTrigger>
+      <SheetContent side="left" className="flex w-72 flex-col bg-card p-0">
+        <div className="flex h-16 items-center border-b border-border px-5">
+          <SheetTitle asChild>
+            <div>
+              <Brand />
+            </div>
+          </SheetTitle>
+        </div>
+        <nav aria-label="Navigation gérant" className="flex-1 overflow-y-auto px-3 py-4">
+          <ul className="space-y-1">
+            {NAV.map((item) => (
+              <li key={item.to}>
+                <Link
+                  to={item.to}
+                  activeOptions={{ exact: item.exact }}
+                  onClick={() => setOpen(false)}
+                  className="flex h-12 items-center gap-3 rounded-lg px-4 text-[15px] font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+                  activeProps={{
+                    className: "!bg-[var(--brand-tint)] !font-semibold !text-primary",
+                  }}
+                >
+                  <item.icon className="size-5" />
+                  <span className="flex-1">{item.label}</span>
+                  {item.to === "/admin/orders" && newOrders > 0 && <NewBadge count={newOrders} />}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </nav>
+        <div className="space-y-1 border-t border-border p-3">
+          <a
+            href={SITE_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="flex h-11 items-center gap-3 rounded-lg px-4 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <ExternalLink className="size-[18px]" /> Voir le site client
+          </a>
+          <button
+            type="button"
+            onClick={() => {
+              setOpen(false);
+              onSignOut();
+            }}
+            className="flex h-11 w-full items-center gap-3 rounded-lg px-4 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground"
+          >
+            <LogOut className="size-[18px]" /> Se déconnecter
+          </button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 }
 

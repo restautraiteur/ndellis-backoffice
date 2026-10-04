@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Fragment, useEffect, useMemo, useState } from "react";
 import { useSearch } from "@tanstack/react-router";
 import {
+  CheckCircle2,
   ChevronDown,
   Download,
   FileSpreadsheet,
@@ -102,7 +103,12 @@ export function OrdersPage() {
   }, [base]);
 
   const filtered = useMemo(
-    () => (status === "all" ? base : base.filter((o) => o.status === status)),
+    () =>
+      status === "all"
+        ? base
+        : status === "encaisser"
+          ? base.filter(toCollect)
+          : base.filter((o) => o.status === status),
     [base, status],
   );
 
@@ -249,6 +255,13 @@ export function OrdersPage() {
           >
             Toutes
           </StatusChip>
+          <StatusChip
+            active={status === "encaisser"}
+            onClick={() => setStatus("encaisser")}
+            count={base.filter(toCollect).length}
+          >
+            À encaisser
+          </StatusChip>
           {ORDER_STATUSES.map((value) => (
             <StatusChip
               key={value}
@@ -380,7 +393,13 @@ export function OrdersPage() {
                         <tr className="bg-secondary/40">
                           <td />
                           <td colSpan={5} className="px-3 pb-5 pt-1">
-                            <OrderDetails order={order} items={itemsByOrder.get(order.id) ?? []} />
+                            <OrderDetails
+                              order={order}
+                              items={itemsByOrder.get(order.id) ?? []}
+                              onPaid={() =>
+                                update.mutate({ id: order.id, patch: { payment_status: "paye" } })
+                              }
+                            />
                           </td>
                         </tr>
                       )}
@@ -444,7 +463,13 @@ export function OrdersPage() {
                   </div>
                   {open && (
                     <div className="border-t border-border bg-secondary/30 p-4">
-                      <OrderDetails order={order} items={itemsByOrder.get(order.id) ?? []} />
+                      <OrderDetails
+                        order={order}
+                        items={itemsByOrder.get(order.id) ?? []}
+                        onPaid={() =>
+                          update.mutate({ id: order.id, patch: { payment_status: "paye" } })
+                        }
+                      />
                     </div>
                   )}
                 </li>
@@ -500,7 +525,25 @@ function StatusChip({
   );
 }
 
-function OrderDetails({ order, items }: { order: Order; items: OrderItem[] }) {
+/** Reste de l'argent à recevoir : solde d'une précommande ou paiement à la livraison. */
+function toCollect(order: Order) {
+  return (
+    order.status !== "annulee" &&
+    ["acompte_paye", "acompte_a_verifier", "a_la_livraison"].includes(order.payment_status)
+  );
+}
+
+function OrderDetails({
+  order,
+  items,
+  onPaid,
+}: {
+  order: Order;
+  items: OrderItem[];
+  onPaid: () => void;
+}) {
+  const balance =
+    order.total - (order.payment_status === "a_la_livraison" ? 0 : order.deposit_required);
   return (
     <div className="grid gap-5 text-sm sm:grid-cols-2">
       <div className="space-y-3">
@@ -515,12 +558,34 @@ function OrderDetails({ order, items }: { order: Order; items: OrderItem[] }) {
         {order.subscription_id && <SubscriptionDetail order={order} />}
         {order.order_type === "precommande" && (
           <Detail label="Acompte">
-            {formatPrice(order.deposit_required)} via{" "}
-            {order.payment_method === "wave" ? "Wave" : "Orange Money"}
-            <span className="block text-muted-foreground">
-              Transaction : {order.payment_reference ?? "non renseignée"}
-            </span>
+            {formatPrice(order.deposit_required)}
+            {order.payment_method === "paydunya" ? " payé en ligne (PayDunya)" : ""}
+            {order.payment_reference && (
+              <span className="block text-muted-foreground">
+                Transaction : {order.payment_reference}
+              </span>
+            )}
           </Detail>
+        )}
+        {toCollect(order) && (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 p-3">
+            <p className="font-medium text-amber-950">
+              {order.payment_status === "a_la_livraison"
+                ? `À encaisser à la livraison : ${formatPrice(order.total)}`
+                : `Solde à recevoir : ${formatPrice(balance)}`}
+            </p>
+            <p className="mt-0.5 text-xs text-amber-900/80">
+              {order.payment_status === "a_la_livraison"
+                ? "Quand le livreur a bien encaissé, confirmez-le ici."
+                : "Vérifiez sur votre compte Wave / Orange Money que le transfert est arrivé, puis confirmez."}
+            </p>
+            <Button size="sm" className="mt-2" onClick={onPaid}>
+              <CheckCircle2 />
+              {order.payment_status === "a_la_livraison"
+                ? "Payé à la livraison"
+                : "Solde reçu · précommande complétée"}
+            </Button>
+          </div>
         )}
       </div>
       <Detail label="Articles">

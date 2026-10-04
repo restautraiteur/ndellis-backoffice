@@ -99,6 +99,7 @@ export const PAYMENT_STATUSES = [
   "echec_paiement",
   "acompte_a_verifier",
   "acompte_paye",
+  "a_la_livraison",
   "paye",
   "abonnement",
 ] as const;
@@ -108,7 +109,8 @@ export const PAYMENT_STATUS_LABELS: Record<string, string> = {
   en_attente_paiement: "Paiement en attente",
   echec_paiement: "Paiement échoué",
   acompte_a_verifier: "Acompte à vérifier",
-  acompte_paye: "Acompte payé",
+  acompte_paye: "Acompte payé · solde à recevoir",
+  a_la_livraison: "À payer à la livraison",
   paye: "Payé",
   abonnement: "Abonnement",
 };
