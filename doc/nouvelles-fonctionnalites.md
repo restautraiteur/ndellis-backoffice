@@ -275,7 +275,7 @@ tables** et **prise de commande par les serveurs** (sur téléphone ou tablette)
 - [x] ~~Audit gérant, points critiques~~ : l'impression échappe désormais les données clients, et la suppression d'un produit demande une confirmation.
 
 
-## À intégrer au modèle
+## Intégré au modèle (4 octobre 2026, restautraiteur/template-backoffice)
 
 Fonctionnalités génériques construites chez Ndelli's avant la création des modèles
 (`template-site`, `template-backoffice`) : à y reporter dès leur création (skill `restau-socle-modele`).
