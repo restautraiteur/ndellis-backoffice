@@ -29,7 +29,7 @@ servent d'identité.
 - `/abonnement` : présentation, « Comment ça marche » (4 étapes), composition (formule avec prix par repas,
   calendrier de départ, coordonnées, règlement), récapitulatif fixe, FAQ.
 - Après souscription : **le code abonné** s'affiche (et au retour du paiement en ligne).
-- **Suivez vos repas** (téléphone seul, lecture) : repas restants, livrés, commandés, plat de chaque repas,
+- **Suivez vos repas** (téléphone + code abonné) : repas restants, livrés, commandés, plat de chaque repas,
   fin estimée, reste à payer avec bouton « Payer en ligne » (code demandé).
 - **Panier** : encadré « Vous êtes abonné ? » → code → jours couverts ou raison du refus, total réduit ;
   « Valider ma commande » sans paiement si tout est couvert. Confirmation : « il vous reste X repas ».
