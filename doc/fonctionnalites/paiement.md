@@ -22,3 +22,7 @@ Sans ces clés, le client voit le message « Le paiement est momentanément indi
 | `paydunya.server.ts` | Appels à l'API PayDunya (créer, confirmer, synchroniser) |
 | `paydunya.functions.ts` | Fonctions serveur `startPayment` et `checkPayment` appelées par le site |
 | `src/routes/api/public/paydunya-ipn.ts` | Notification serveur à serveur de PayDunya |
+
+## Acompte de précommande (4 octobre 2026)
+- **1 500 F par plat** des jours suivants (2 plats → 3 000 F). Panier mixte : plats du jour payés en entier + acompte pour les jours suivants ; les jus suivent le premier jour de livraison (payés maintenant s'il s'agit d'aujourd'hui). Le reste se paie à la livraison.
+- Calcul fait par la base (`place_order`, migration `20261004110000_acompte_par_plat.sql`) ; `orders.deposit_required` = somme payée maintenant. Le panier affiche « À payer maintenant » avec le détail et le reste à la livraison.
