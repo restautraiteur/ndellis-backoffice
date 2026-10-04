@@ -7,8 +7,9 @@ import { Label } from "@ui/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@ui/components/ui/tabs";
 import { supabase } from "@core/integrations/supabase/client";
 import { db } from "@core/lib/db";
-import logo from "@core/assets/logo-ndellis.png";
+import logo from "@core/assets/logo.png";
 import { SITE_URL } from "@core/lib/urls";
+import { CLIENT } from "@/config/client";
 
 export function AuthPage() {
   const navigate = useNavigate();
@@ -78,7 +79,7 @@ export function AuthPage() {
         <div className="mb-6 flex flex-col items-center text-center">
           <img
             src={logo}
-            alt="Le Ndelli's NDS Traiteur"
+            alt={CLIENT.name}
             width={256}
             height={256}
             className="size-20 rounded-full bg-white object-cover"

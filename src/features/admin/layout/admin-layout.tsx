@@ -23,13 +23,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@ui/components/ui/dropdown-menu";
-import logo from "@core/assets/logo-ndellis.png";
+import logo from "@core/assets/logo.png";
 import { supabase } from "@core/integrations/supabase/client";
 import { db } from "@core/lib/db";
 import { ordersQuery } from "@/features/admin/orders/api";
 import { adminMenuQuery } from "@core/domain/menu/api";
 import { NotificationBell } from "@/features/admin/notifications/notification-bell";
 import { SITE_URL } from "@core/lib/urls";
+import { CLIENT } from "@/config/client";
 
 const NAV = [
   { to: "/admin", label: "Tableau de bord", icon: LayoutDashboard, exact: true },
@@ -308,7 +309,7 @@ function Brand() {
         className="size-10 shrink-0 rounded-full border border-border bg-white object-cover"
       />
       <span className="leading-tight">
-        <span className="block text-[15px] font-semibold">Ndelli's Traiteur</span>
+        <span className="block text-[15px] font-semibold">{CLIENT.name}</span>
         <span className="block text-xs text-muted-foreground">Espace gérant</span>
       </span>
     </Link>

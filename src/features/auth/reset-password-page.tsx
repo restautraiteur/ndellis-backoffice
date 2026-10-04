@@ -5,7 +5,8 @@ import { Button } from "@ui/components/ui/button";
 import { Input } from "@ui/components/ui/input";
 import { Label } from "@ui/components/ui/label";
 import { supabase } from "@core/integrations/supabase/client";
-import logo from "@core/assets/logo-ndellis.png";
+import logo from "@core/assets/logo.png";
+import { CLIENT } from "@/config/client";
 
 /**
  * Page ouverte depuis le lien « Mot de passe oublié » reçu par email.
@@ -53,7 +54,7 @@ export function ResetPasswordPage() {
         <div className="mb-6 flex flex-col items-center text-center">
           <img
             src={logo}
-            alt="Le Ndelli's NDS Traiteur"
+            alt={CLIENT.name}
             width={256}
             height={256}
             className="size-16 rounded-full bg-white object-cover"

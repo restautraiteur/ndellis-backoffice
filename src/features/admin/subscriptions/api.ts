@@ -114,7 +114,7 @@ export function mealDish(meal: Meal) {
   return [...new Set(names)].join(", ");
 }
 
-/** Numéro lisible : 221781867272 → +221 78 186 72 72 (format sénégalais quand c'est possible). */
+/** Numéro lisible : 221771234567 → +221 77 123 45 67 (format sénégalais quand c'est possible). */
 export function formatPhone(digits: string) {
   const m = digits.match(/^(221)?(\d{2})(\d{3})(\d{2})(\d{2})$/);
   if (!m) return digits;

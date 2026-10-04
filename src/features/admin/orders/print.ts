@@ -1,4 +1,4 @@
-import logo from "@core/assets/logo-ndellis.png";
+import logo from "@core/assets/logo.png";
 import {
   formatDay,
   formatPrice,
@@ -6,6 +6,7 @@ import {
   PAYMENT_STATUS_LABELS,
 } from "@core/lib/format";
 import type { Order, OrderItem } from "@/features/admin/orders/api";
+import { CLIENT } from "@/config/client";
 
 /**
  * Impressions de l'espace gérant. Chaque fonction ouvre une fenêtre prête à imprimer ;
@@ -118,7 +119,7 @@ const DOC_CSS = `
 function docHead(title: string, subtitle: string) {
   return `<div class="doc-head">
     <img src="${logoUrl()}" alt="" />
-    <div><div class="brand">Ndelli's Traiteur</div><div class="muted">Imprimé le ${esc(printedAt())}</div></div>
+    <div><div class="brand">${esc(CLIENT.name)}</div><div class="muted">Imprimé le ${esc(printedAt())}</div></div>
     <div class="title"><h1>${esc(title)}</h1><div class="muted">${esc(subtitle)}</div></div>
   </div>`;
 }
@@ -266,7 +267,7 @@ function ticketHtml(order: Order, date: string, lines: OrderItem[]) {
   const shown = lines.slice(0, MAX_TICKET_LINES);
   const hidden = lines.length - shown.length;
   return `<article class="ticket">
-    <header><img src="${logoUrl()}" alt="" /><span class="brand">Ndelli's Traiteur</span><span class="ref">${esc(order.reference)}</span></header>
+    <header><img src="${logoUrl()}" alt="" /><span class="brand">${esc(CLIENT.name)}</span><span class="ref">${esc(order.reference)}</span></header>
     <div class="client">${esc(order.first_name)} ${esc(order.last_name)}</div>
     <div class="phone num">${esc(order.phone)}</div>
     <div class="addr">${esc(order.address)}${order.address_extra ? `, ${esc(order.address_extra)}` : ""}</div>

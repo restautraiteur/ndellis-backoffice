@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { AdminLayout } from "@/features/admin/layout/admin-layout";
+import { CLIENT } from "@/config/client";
 
 export const Route = createFileRoute("/admin")({
   head: () => ({
@@ -14,7 +15,7 @@ export const Route = createFileRoute("/admin")({
       { name: "robots", content: "noindex" },
       // Permet d'ajouter l'espace gérant à l'écran d'accueil (indispensable pour les notifications sur iPhone).
       { name: "apple-mobile-web-app-capable", content: "yes" },
-      { name: "apple-mobile-web-app-title", content: "Ndelli's Gérant" },
+      { name: "apple-mobile-web-app-title", content: `${CLIENT.name} · Gérant` },
       { name: "theme-color", content: "#ffffff" },
     ],
     links: [{ rel: "manifest", href: "/admin.webmanifest" }],
