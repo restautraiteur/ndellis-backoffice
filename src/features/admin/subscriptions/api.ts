@@ -129,6 +129,13 @@ export function smsLink(phone: string, text: string) {
   return `sms:+${intl}?body=${encodeURIComponent(text)}`;
 }
 
+/** Lien WhatsApp avec le même message prêt à envoyer. */
+export function whatsappLink(phone: string, text: string) {
+  const digits = phone.replace(/\D/g, "");
+  const intl = digits.length === 9 ? `221${digits}` : digits;
+  return `https://wa.me/${intl}?text=${encodeURIComponent(text)}`;
+}
+
 /** Message envoyé à l'abonné quand son repas est livré. */
 export function deliveredMessage(
   sub: Pick<Subscription, "customer_name" | "meals_count" | "price" | "amount_paid">,

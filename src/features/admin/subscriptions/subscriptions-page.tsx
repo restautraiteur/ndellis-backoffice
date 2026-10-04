@@ -1,16 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import {
-  Banknote,
-  Check,
-  KeyRound,
-  MessageSquareText,
-  Pencil,
-  Phone,
-  Plus,
-  RefreshCw,
-  X,
-} from "lucide-react";
+import { Banknote, Check, KeyRound, Pencil, Phone, Plus, RefreshCw, X } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@ui/components/ui/button";
 import { Input } from "@ui/components/ui/input";
@@ -31,12 +21,12 @@ import {
   mealDish,
   plansAdminQuery,
   remainingMeals,
-  smsLink,
   subscriptionsQuery,
   type Plan,
   type Subscription,
 } from "@/features/admin/subscriptions/api";
 import { CLIENT } from "@/config/client";
+import { SendMessageButton } from "@/features/admin/subscriptions/send-message-button";
 import { db } from "@core/lib/db";
 import { formatDay, formatPrice, todayISO } from "@core/lib/format";
 import { cn } from "@core/lib/utils";
@@ -178,11 +168,11 @@ function TodayMeals({ subs }: { subs: Subscription[] }) {
                     </Button>
                   )
                 )}
-                <Button size="sm" variant="outline" asChild>
-                  <a href={smsLink(s.phone, deliveredMessage(s, remaining, CLIENT.name))}>
-                    <MessageSquareText className="size-4" /> Prévenir par SMS
-                  </a>
-                </Button>
+                <SendMessageButton
+                  phone={s.phone}
+                  text={deliveredMessage(s, remaining, CLIENT.name)}
+                  label="Prévenir"
+                />
               </li>
             );
           })}
@@ -344,15 +334,13 @@ function Subscribers({ subs }: { subs: Subscription[] }) {
                     )}
                     {s.status !== "annulee" && (
                       <>
-                        <Button size="icon" variant="ghost" className="ml-1" asChild>
-                          <a
-                            href={smsLink(s.phone, codeMessage)}
-                            aria-label={`Envoyer le code à ${s.customer_name} par SMS`}
-                            title="Envoyer le code par SMS"
-                          >
-                            <MessageSquareText className="size-4" />
-                          </a>
-                        </Button>
+                        <SendMessageButton
+                          phone={s.phone}
+                          text={codeMessage}
+                          iconOnly
+                          className="ml-1"
+                          title={`Envoyer le code à ${s.customer_name} (SMS ou WhatsApp)`}
+                        />
                         <Button
                           size="icon"
                           variant="ghost"

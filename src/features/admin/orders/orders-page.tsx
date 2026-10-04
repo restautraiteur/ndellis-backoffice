@@ -5,7 +5,6 @@ import {
   ChevronDown,
   Download,
   FileSpreadsheet,
-  MessageSquareText,
   Printer,
   Receipt,
   Scissors,
@@ -48,11 +47,11 @@ import {
 import { ORDER_STATUS_TONES, PAYMENT_STATUS_TONES } from "@/features/admin/components/status-tones";
 import { cn } from "@core/lib/utils";
 import { CLIENT } from "@/config/client";
+import { SendMessageButton } from "@/features/admin/subscriptions/send-message-button";
 import {
   deliveredMessage,
   remainingMeals,
   subscriptionsQuery,
-  smsLink,
 } from "@/features/admin/subscriptions/api";
 
 type Patch = { id: string; patch: Record<string, unknown> };
@@ -560,7 +559,7 @@ function OrderDetails({ order, items }: { order: Order; items: OrderItem[] }) {
   );
 }
 
-/** Commande d'abonné : montant pris en charge, repas restants et SMS après livraison. */
+/** Commande d'abonné : montant pris en charge, repas restants et message (SMS ou WhatsApp) après livraison. */
 function SubscriptionDetail({ order }: { order: Order }) {
   const { data: subs = [] } = useQuery(subscriptionsQuery());
   const sub = subs.find((s) => s.id === order.subscription_id);
@@ -575,11 +574,12 @@ function SubscriptionDetail({ order }: { order: Order }) {
           ? ` · solde à régler : ${formatPrice(sub.price - sub.amount_paid)}`
           : ""}
       </span>
-      <Button size="sm" variant="outline" className="mt-2" asChild>
-        <a href={smsLink(sub.phone, deliveredMessage(sub, remaining, CLIENT.name))}>
-          <MessageSquareText /> SMS : repas livré
-        </a>
-      </Button>
+      <SendMessageButton
+        phone={sub.phone}
+        text={deliveredMessage(sub, remaining, CLIENT.name)}
+        label="Prévenir : repas livré"
+        className="mt-2"
+      />
     </Detail>
   );
 }
