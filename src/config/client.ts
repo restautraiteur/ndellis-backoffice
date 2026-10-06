@@ -5,4 +5,6 @@
 export const CLIENT = {
   /** Nom affiché dans les messages envoyés aux clients. */
   name: "Ndelli's Traiteur",
+  /** Module « Entreprises partenaires » (désactivé pour l'instant ; possible plus tard, ex. Free). */
+  partners: false,
 } as const;

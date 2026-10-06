@@ -13,6 +13,7 @@ import {
   ShoppingBag,
   Calculator,
   CalendarCheck,
+  Building2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@ui/components/ui/button";
@@ -42,6 +43,10 @@ const NAV = [
   { to: "/admin/reports", label: "Bilan", icon: ChartColumn, exact: false },
   { to: "/admin/abonnements", label: "Abonnements", icon: CalendarCheck, exact: false },
   { to: "/admin/simulation", label: "Simulation", icon: Calculator, exact: false },
+  // Module « Entreprises partenaires » : visible seulement s'il est activé pour ce client.
+  ...(CLIENT.partners
+    ? ([{ to: "/admin/entreprises", label: "Entreprises", icon: Building2, exact: false }] as const)
+    : []),
 ] as const;
 
 export function AdminLayout() {

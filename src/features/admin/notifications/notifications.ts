@@ -2,14 +2,20 @@ import type { Order } from "@/features/admin/orders/api";
 import type { MenuRow } from "@core/domain/menu/api";
 
 /** Familles de notifications, utilisées pour filtrer le panneau. */
-export type NotificationGroup = "precommandes" | "commandes" | "paiements" | "stocks";
+export type NotificationGroup =
+  "precommandes" | "commandes" | "paiements" | "stocks" | "entreprises";
 
 export type NotificationKind =
   | "nouvelle_precommande"
   | "nouvelle_commande"
   | "acompte_a_verifier"
   | "paiement_echoue"
-  | "plat_epuise";
+  | "plat_epuise"
+  | "commande_entreprise"
+  | "facture_impayee"
+  | "code_bloque"
+  | "commandes_closes"
+  | "factures_a_envoyer";
 
 export type AdminNotification = {
   id: string;
@@ -32,6 +38,11 @@ export const NOTIFICATION_KINDS: Record<
   acompte_a_verifier: { label: "Acompte à vérifier", group: "paiements" },
   paiement_echoue: { label: "Paiement échoué", group: "paiements" },
   plat_epuise: { label: "Plat épuisé", group: "stocks" },
+  commande_entreprise: { label: "Commande entreprise", group: "entreprises" },
+  facture_impayee: { label: "Facture impayée", group: "entreprises" },
+  code_bloque: { label: "Code employé bloqué", group: "entreprises" },
+  commandes_closes: { label: "Commandes closes", group: "entreprises" },
+  factures_a_envoyer: { label: "Factures à envoyer", group: "entreprises" },
 };
 
 export const NOTIFICATION_GROUPS: { value: NotificationGroup | "all"; label: string }[] = [
@@ -40,7 +51,40 @@ export const NOTIFICATION_GROUPS: { value: NotificationGroup | "all"; label: str
   { value: "commandes", label: "Commandes" },
   { value: "paiements", label: "Paiements" },
   { value: "stocks", label: "Stocks" },
+  { value: "entreprises", label: "Entreprises" },
 ];
+
+/** Données du module « Entreprises partenaires » (si activé). */
+export type PartnerNotificationData = {
+  partners: {
+    id: string;
+    name: string;
+    cutoff_time: string;
+    cutoff_day_offset: number;
+    delivery_time: string;
+  }[];
+  /** Repas commandés par les entreprises (mois précédent et mois en cours). */
+  lines: { partner_id: string; day_date: string; quantity: number }[];
+  employees: {
+    id: string;
+    full_name: string;
+    partner_id: string;
+    pin_failures: number;
+    active: boolean;
+  }[];
+  invoices: {
+    id: string;
+    partner_id: string;
+    month: string;
+    reference: string;
+    total: number;
+    status: string;
+    sent_at: string;
+  }[];
+};
+
+/** Une facture envoyée depuis plus de 30 jours sans être payée est signalée. */
+const INVOICE_OVERDUE_MS = 30 * 24 * 60 * 60 * 1000;
 
 /** Fenêtre affichée : les 7 derniers jours. */
 const WINDOW_MS = 7 * 24 * 60 * 60 * 1000;
@@ -54,10 +98,24 @@ export function buildNotifications(
   menu: MenuRow[],
   today: string,
   now = Date.now(),
+  partnerData?: PartnerNotificationData,
 ): AdminNotification[] {
   const list: AdminNotification[] = [];
+  const partnerName = new Map((partnerData?.partners ?? []).map((p) => [p.id, p.name]));
   for (const order of orders) {
     if (now - new Date(order.created_at).getTime() > WINDOW_MS) continue;
+    if (order.partner_id) {
+      list.push({
+        id: `commande_entreprise:${order.id}`,
+        kind: "commande_entreprise",
+        group: "entreprises",
+        title: order.first_name,
+        detail: `${partnerName.get(order.partner_id) ?? order.last_name} · ${order.reference}`,
+        at: order.created_at,
+        reference: order.reference,
+      });
+      continue;
+    }
     const client = `${order.first_name} ${order.last_name}`.trim();
     const kind: NotificationKind =
       order.order_type === "precommande" ? "nouvelle_precommande" : "nouvelle_commande";
@@ -98,10 +156,78 @@ export function buildNotifications(
       at: `${row.day_date}T00:00:00Z`,
     });
   }
+  for (const invoice of partnerData?.invoices ?? []) {
+    if (
+      invoice.status === "payee" ||
+      now - new Date(invoice.sent_at).getTime() < INVOICE_OVERDUE_MS
+    )
+      continue;
+    list.push({
+      id: `facture_impayee:${invoice.id}`,
+      kind: "facture_impayee",
+      group: "entreprises",
+      title: partnerName.get(invoice.partner_id) ?? "Entreprise",
+      detail: `${invoice.reference} envoyée il y a plus de 30 jours`,
+      at: invoice.sent_at,
+    });
+  }
+  for (const employee of partnerData?.employees ?? []) {
+    if (!employee.active || employee.pin_failures < 5) continue;
+    list.push({
+      id: `code_bloque:${employee.id}:${employee.pin_failures}`,
+      kind: "code_bloque",
+      group: "entreprises",
+      title: employee.full_name,
+      detail: `${partnerName.get(employee.partner_id) ?? ""} · code bloqué après 5 essais`,
+      at: new Date(now).toISOString(),
+    });
+  }
+  // Récapitulatif à l'heure limite : les commandes du jour sont closes, quantités à préparer.
+  for (const partner of partnerData?.partners ?? []) {
+    const meals = (partnerData?.lines ?? [])
+      .filter((l) => l.partner_id === partner.id && l.day_date === today)
+      .reduce((s, l) => s + l.quantity, 0);
+    if (meals === 0) continue;
+    const deadline = new Date(`${today}T${partner.cutoff_time}Z`);
+    deadline.setUTCDate(deadline.getUTCDate() - partner.cutoff_day_offset);
+    if (now < deadline.getTime()) continue;
+    list.push({
+      id: `commandes_closes:${partner.id}:${today}`,
+      kind: "commandes_closes",
+      group: "entreprises",
+      title: `${partner.name} : ${meals} repas aujourd'hui`,
+      detail: `Commandes closes · livraison à ${partner.delivery_time.slice(0, 5).replace(":", " h ")}`,
+      at: deadline.toISOString(),
+    });
+  }
+  // Fin / début de mois : entreprises qui ont commandé ce mois-là sans facture envoyée.
+  const dayOfMonth = Number(today.slice(8, 10));
+  if (partnerData && (dayOfMonth >= 25 || dayOfMonth <= 5)) {
+    const ref = new Date(`${today.slice(0, 7)}-01T00:00:00Z`);
+    if (dayOfMonth <= 5) ref.setUTCMonth(ref.getUTCMonth() - 1);
+    const month = ref.toISOString().slice(0, 7);
+    const ordered = new Set(
+      partnerData.lines.filter((l) => l.day_date.startsWith(month)).map((l) => l.partner_id),
+    );
+    const invoiced = new Set(
+      partnerData.invoices.filter((i) => i.month.startsWith(month)).map((i) => i.partner_id),
+    );
+    const missing = [...ordered].filter((id) => !invoiced.has(id));
+    if (missing.length > 0) {
+      list.push({
+        id: `factures_a_envoyer:${month}:${missing.length}`,
+        kind: "factures_a_envoyer",
+        group: "entreprises",
+        title: `${missing.length} facture${missing.length > 1 ? "s" : ""} à envoyer`,
+        detail: missing.map((id) => partnerName.get(id) ?? "").join(", "),
+        at: new Date(now).toISOString(),
+      });
+    }
+  }
   return list.sort((a, b) => b.at.localeCompare(a.at));
 }
 
-const SEEN_KEY = "ndellis-admin-notifications-seen";
+const SEEN_KEY = "admin-notifications-seen";
 
 /** Identifiants déjà vus, gardés dans ce navigateur. */
 export function loadSeen(): Set<string> {

@@ -1,5 +1,5 @@
 import { queryOptions } from "@tanstack/react-query";
-import { db, run } from "@core/lib/db";
+import { db, run, runAll } from "@core/lib/db";
 import { todayISO } from "@core/lib/format";
 
 export type ProductState = "disponible" | "epuise" | "ferme" | "desactive" | "jour_ferme";
@@ -25,6 +25,8 @@ export type MenuRow = {
   close_time: string;
   is_active: boolean;
   state: ProductState;
+  /** Type de cuisine du plat (sénégalaise, marocaine…), s'il est renseigné. */
+  dish_category: string | null;
 };
 
 export const publicMenuQuery = () =>
@@ -40,5 +42,8 @@ export const publicMenuQuery = () =>
 export const adminMenuQuery = () =>
   queryOptions({
     queryKey: ["menu", "admin"],
-    queryFn: () => run<MenuRow[]>(db.from("menu_view").select("*").order("day_date")),
+    queryFn: () =>
+      runAll<MenuRow>(() =>
+        db.from("menu_view").select("*").order("day_date").order("day_product_id"),
+      ),
   });

@@ -15,11 +15,13 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AdminIndexRouteImport } from './routes/admin/index'
 import { Route as AdminAbonnementsRouteImport } from './routes/admin/abonnements'
+import { Route as AdminEntreprisesRouteImport } from './routes/admin/entreprises'
 import { Route as AdminOrdersRouteImport } from './routes/admin/orders'
 import { Route as AdminProductsRouteImport } from './routes/admin/products'
 import { Route as AdminReportsRouteImport } from './routes/admin/reports'
 import { Route as AdminSimulationRouteImport } from './routes/admin/simulation'
 import { Route as AdminWeeksRouteImport } from './routes/admin/weeks'
+import { Route as ApiCronInvoicesRouteImport } from './routes/api/cron/invoices'
 import { Route as ApiPublicPushKeyRouteImport } from './routes/api/public/push-key'
 import { Route as ApiPublicPushWebhookRouteImport } from './routes/api/public/push-webhook'
 
@@ -53,6 +55,11 @@ const AdminAbonnementsRoute = AdminAbonnementsRouteImport.update({
   path: '/abonnements',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminEntreprisesRoute = AdminEntreprisesRouteImport.update({
+  id: '/entreprises',
+  path: '/entreprises',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminOrdersRoute = AdminOrdersRouteImport.update({
   id: '/orders',
   path: '/orders',
@@ -78,6 +85,11 @@ const AdminWeeksRoute = AdminWeeksRouteImport.update({
   path: '/weeks',
   getParentRoute: () => AdminRoute,
 } as any)
+const ApiCronInvoicesRoute = ApiCronInvoicesRouteImport.update({
+  id: '/api/cron/invoices',
+  path: '/api/cron/invoices',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicPushKeyRoute = ApiPublicPushKeyRouteImport.update({
   id: '/api/public/push-key',
   path: '/api/public/push-key',
@@ -95,12 +107,14 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin/abonnements': typeof AdminAbonnementsRoute
+  '/admin/entreprises': typeof AdminEntreprisesRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/simulation': typeof AdminSimulationRoute
   '/admin/weeks': typeof AdminWeeksRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/cron/invoices': typeof ApiCronInvoicesRoute
   '/api/public/push-key': typeof ApiPublicPushKeyRoute
   '/api/public/push-webhook': typeof ApiPublicPushWebhookRoute
 }
@@ -109,12 +123,14 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin/abonnements': typeof AdminAbonnementsRoute
+  '/admin/entreprises': typeof AdminEntreprisesRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/simulation': typeof AdminSimulationRoute
   '/admin/weeks': typeof AdminWeeksRoute
   '/admin': typeof AdminIndexRoute
+  '/api/cron/invoices': typeof ApiCronInvoicesRoute
   '/api/public/push-key': typeof ApiPublicPushKeyRoute
   '/api/public/push-webhook': typeof ApiPublicPushWebhookRoute
 }
@@ -125,12 +141,14 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
   '/admin/abonnements': typeof AdminAbonnementsRoute
+  '/admin/entreprises': typeof AdminEntreprisesRoute
   '/admin/orders': typeof AdminOrdersRoute
   '/admin/products': typeof AdminProductsRoute
   '/admin/reports': typeof AdminReportsRoute
   '/admin/simulation': typeof AdminSimulationRoute
   '/admin/weeks': typeof AdminWeeksRoute
   '/admin/': typeof AdminIndexRoute
+  '/api/cron/invoices': typeof ApiCronInvoicesRoute
   '/api/public/push-key': typeof ApiPublicPushKeyRoute
   '/api/public/push-webhook': typeof ApiPublicPushWebhookRoute
 }
@@ -142,12 +160,14 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/admin/abonnements'
+    | '/admin/entreprises'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/reports'
     | '/admin/simulation'
     | '/admin/weeks'
     | '/admin/'
+    | '/api/cron/invoices'
     | '/api/public/push-key'
     | '/api/public/push-webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -156,12 +176,14 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/admin/abonnements'
+    | '/admin/entreprises'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/reports'
     | '/admin/simulation'
     | '/admin/weeks'
     | '/admin'
+    | '/api/cron/invoices'
     | '/api/public/push-key'
     | '/api/public/push-webhook'
   id:
@@ -171,12 +193,14 @@ export interface FileRouteTypes {
     | '/auth'
     | '/reset-password'
     | '/admin/abonnements'
+    | '/admin/entreprises'
     | '/admin/orders'
     | '/admin/products'
     | '/admin/reports'
     | '/admin/simulation'
     | '/admin/weeks'
     | '/admin/'
+    | '/api/cron/invoices'
     | '/api/public/push-key'
     | '/api/public/push-webhook'
   fileRoutesById: FileRoutesById
@@ -186,6 +210,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  ApiCronInvoicesRoute: typeof ApiCronInvoicesRoute
   ApiPublicPushKeyRoute: typeof ApiPublicPushKeyRoute
   ApiPublicPushWebhookRoute: typeof ApiPublicPushWebhookRoute
 }
@@ -234,6 +259,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminAbonnementsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/entreprises': {
+      id: '/admin/entreprises'
+      path: '/entreprises'
+      fullPath: '/admin/entreprises'
+      preLoaderRoute: typeof AdminEntreprisesRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/orders': {
       id: '/admin/orders'
       path: '/orders'
@@ -269,6 +301,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminWeeksRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/api/cron/invoices': {
+      id: '/api/cron/invoices'
+      path: '/api/cron/invoices'
+      fullPath: '/api/cron/invoices'
+      preLoaderRoute: typeof ApiCronInvoicesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/push-key': {
       id: '/api/public/push-key'
       path: '/api/public/push-key'
@@ -288,6 +327,7 @@ declare module '@tanstack/react-router' {
 
 interface AdminRouteChildren {
   AdminAbonnementsRoute: typeof AdminAbonnementsRoute
+  AdminEntreprisesRoute: typeof AdminEntreprisesRoute
   AdminOrdersRoute: typeof AdminOrdersRoute
   AdminProductsRoute: typeof AdminProductsRoute
   AdminReportsRoute: typeof AdminReportsRoute
@@ -298,6 +338,7 @@ interface AdminRouteChildren {
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminAbonnementsRoute: AdminAbonnementsRoute,
+  AdminEntreprisesRoute: AdminEntreprisesRoute,
   AdminOrdersRoute: AdminOrdersRoute,
   AdminProductsRoute: AdminProductsRoute,
   AdminReportsRoute: AdminReportsRoute,
@@ -313,6 +354,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  ApiCronInvoicesRoute: ApiCronInvoicesRoute,
   ApiPublicPushKeyRoute: ApiPublicPushKeyRoute,
   ApiPublicPushWebhookRoute: ApiPublicPushWebhookRoute,
 }

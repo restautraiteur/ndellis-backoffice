@@ -18,7 +18,7 @@ import {
 } from "@/features/admin/menu-planning/calendar";
 import { WeekBoard } from "@/features/admin/menu-planning/components/week-board";
 
-const VIEW_KEY = "ndellis-admin-menus-view";
+const VIEW_KEY = "admin-menus-view";
 import { DayDialog } from "@/features/admin/menu-planning/components/day-dialog";
 import { ConfirmDialog, PageHeader, TonePill } from "@/features/admin/components/admin-ui";
 
@@ -380,6 +380,9 @@ export function WeeksPage() {
                                 className={cn("block truncate", !item.is_active && "line-through")}
                               >
                                 {item.name}
+                                {item.dish_category && (
+                                  <span className="text-primary/70"> · {item.dish_category}</span>
+                                )}
                               </span>
                             ))}
                             {items.length > 3 && (

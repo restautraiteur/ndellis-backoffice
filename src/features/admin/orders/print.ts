@@ -17,7 +17,7 @@ import { CLIENT } from "@/config/client";
 export type TicketFormat = "a4" | "thermal";
 
 /** Échappe le texte saisi par les clients avant de l'insérer dans la page d'impression. */
-function esc(value: string | number | null | undefined) {
+export function esc(value: string | number | null | undefined) {
   return String(value ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -65,7 +65,7 @@ ${"<"}/script>`
 }</body></html>`;
 }
 
-function openPrintWindow(title: string, body: string, css: string) {
+export function openPrintWindow(title: string, body: string, css: string) {
   const win = window.open("", "_blank", "width=1000,height=1100");
   if (!win) {
     alert("Autorisez les fenêtres pop-up pour ce site afin de pouvoir imprimer.");
@@ -91,7 +91,7 @@ function printedAt() {
 /* En-tête commun des documents A4                                            */
 /* -------------------------------------------------------------------------- */
 
-const DOC_CSS = `
+export const DOC_CSS = `
   @page { size: A4; margin: 14mm; }
   .doc { padding: 24px; max-width: 900px; margin: 0 auto; }
   @media print { .doc { padding: 0; max-width: none; } }
@@ -116,7 +116,7 @@ const DOC_CSS = `
   .doc-foot { margin-top: 18px; font-size: 11px; color: #5f6b7a; }
 `;
 
-function docHead(title: string, subtitle: string) {
+export function docHead(title: string, subtitle: string) {
   return `<div class="doc-head">
     <img src="${logoUrl()}" alt="" />
     <div><div class="brand">${esc(CLIENT.name)}</div><div class="muted">Imprimé le ${esc(printedAt())}</div></div>

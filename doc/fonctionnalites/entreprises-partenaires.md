@@ -1,0 +1,108 @@
+# Entreprises partenaires (module)
+
+Module **générique**, désactivable par client (`src/config/client.ts` : `partners: true | false`).
+Premier client : **SESA Catering** (restauration collective). Proposé en option à Ndelli's.
+
+## Principe
+Des entreprises partenaires (ex. RTS, 150 employés) ont un contrat avec le restaurant. Leurs **employés
+enrôlés** commandent leur repas **à l'avance**, **sans payer** : l'**entreprise paie tout** en fin de mois.
+Chaque jour de livraison produit un **bon de commande** par entreprise ; à la fin du mois, tous les bons
+sont regroupés en une **facture** (ex. 22 bons = 1 facture).
+
+## Décisions (5 octobre 2026)
+| Point | Décision |
+|---|---|
+| Heure limite | **Réglable par entreprise** (par défaut : 6 h le matin du jour de livraison). Après, la commande passe au jour suivant. |
+| Paiement | **L'entreprise paie tout** ; l'employé ne paie rien. |
+| Menu | **Le même menu de la semaine pour tous** (particuliers et entreprises). |
+| Identification | **Pas de compte ni de connexion** : au moment de valider sa commande, l'employé choisit **son entreprise**, saisit **son téléphone et son code** (4 chiffres, envoyé par SMS / WhatsApp à l'enrôlement). 5 essais faux → bloqué. |
+| Jour même | Interdit : l'employé commande pour les jours suivants seulement (avant l'heure limite). |
+
+## Côté gérant (page « Entreprises »)
+- **Tableau de bord** (KPI du mois) : repas livrés aux entreprises, chiffre d'affaires (et évolution
+  vs mois précédent), employés qui commandent / enrôlés, factures à encaisser ; **top entreprises**
+  (chiffre d'affaires, repas, taux de participation), employés les plus fidèles, plats préférés.
+- **Entreprises partenaires** : **logo**, nom, contact (nom, téléphone, email), adresse et heure de
+  livraison, heure limite de commande, actif ou non.
+- **Employés** par entreprise (après création) : nom, **téléphone**, **email**, code, actif /
+  désactivé. Ajout un par un ou **import** : fichier **Excel (.xlsx)** ou **CSV**, **lien Google
+  Sheets** partagé, ou copier-coller. **Modèle à télécharger** (Nom ; Prénom ; Téléphone ; Email) à
+  envoyer à l'entreprise. Envoi du code par SMS ou WhatsApp.
+- **CRUD complet** : créer, modifier, supprimer une entreprise (avec confirmation) ; ajouter,
+  modifier, désactiver, supprimer des employés. **Sélection multiple** des employés : désactiver,
+  réactiver, nouveaux codes, exporter (avec codes), supprimer.
+- **Fiche entreprise · situation financière** : ce qu'elle doit (factures envoyées), dont en retard,
+  non facturé du mois en cours, **délai de paiement** (jours, réglable) et **échéance** de chaque
+  facture, dernier paiement.
+- **Paiements reçus** (« Encaisser » sur une facture, ou « Enregistrer un paiement » dans la fiche) :
+  montant, date de réception, mode (virement, chèque, Wave, Orange Money, espèces), référence. En une
+  ou plusieurs fois ; la facture passe à « partielle » puis « payée » automatiquement (table
+  `partner_payments`, migration `20261005190000`). **CA encaissé** du mois dans les KPI, la fiche
+  entreprise et le tableau de bord, à côté du CA facturé et du reste à encaisser.
+- **Étiquettes à découper** : une étiquette par commande (entreprise, employé, téléphone, n° de
+  commande, plats), regroupées par entreprise, une page par entreprise — depuis Bons de commande ou
+  Commandes (filtre « Client » : particuliers / une entreprise).
+- **Notifications** (cloche, filtre « Entreprises ») : nouvelle commande d'entreprise ; **commandes
+  closes** (récapitulatif à l'heure limite : « RTS : 42 repas aujourd'hui ») ; **factures à envoyer**
+  (du 25 au 5) ; facture en retard (envoyée depuis plus de 30 jours) ; code employé bloqué.
+- **Tableau de bord général** : encart « Entreprises partenaires » (repas du jour par entreprise,
+  chiffre d'affaires du mois, à encaisser, factures en retard).
+- **Bons de commande du jour** : un par entreprise — employés, plats, quantités, montant total ; PDF à
+  imprimer / télécharger, case « livré et signé ».
+- **Production** : total par plat et par entreprise (cuisine et livraison).
+- **Facturation mensuelle** : par entreprise, regroupe les bons du mois (détail par jour et par employé),
+  PDF + Excel, statut « à facturer → envoyée → payée ».
+
+## Côté site (employé)
+- L'employé choisit son plat dans le menu des jours à venir, comme tout le monde.
+- Au panier, option **« Je commande pour mon entreprise »** : il choisit son entreprise dans la liste,
+  saisit son téléphone et son code — c'est tout. Pas de compte, pas de mot de passe, pas de paiement
+  (« facturé à votre entreprise »).
+- Contrôles : employé enrôlé et actif dans cette entreprise, code correct, heure limite respectée,
+  jour de livraison à venir.
+
+## Données (prévu)
+`partners`, `partner_employees`, `orders.partner_id` / `partner_employee_id`, statut de paiement
+`facture_entreprise`, `partner_delivery_notes` (bon du jour), `partner_invoices` (facture du mois) ;
+fonction `place_partner_order` (contrôle de l'heure limite et de l'employé, réservation du stock).
+
+## Envoi automatique des factures (5 octobre 2026)
+- Fiche entreprise : **« Envoi automatique de la facture : le N de chaque mois »** (1 à 28, ou manuel).
+  La facture couvre **du N+1 du mois précédent au N** (ex. le 24 : du 25 au 24) et part **par email au
+  responsable** (« Email du responsable » de la fiche), avec le détail par employé en pièce jointe (CSV).
+- Tâche quotidienne Vercel (`vercel.json` → `/api/cron/invoices`, 7 h) protégée par `CRON_SECRET`.
+- Onglet Facturation : période de chaque entreprise, bouton **« Envoyer par email »** / « Renvoyer »,
+  date et destinataire du dernier envoi.
+- Emails via **Brevo** (`BREVO_API_KEY`) ou Resend (`RESEND_API_KEY`), et `INVOICE_FROM_EMAIL`, sur Vercel.
+
+## Autres ajouts du même jour
+- **Catalogue** : types de cuisine (sénégalaise, marocaine…) gérés dans « Types de cuisine », filtre,
+  badge ; visibles sur le site (cartes des plats) et dans la planification des menus.
+- **Tableau de bord** : « Aperçu du mois » (calendrier : portions prévues / réservées, chiffre
+  d'affaires par jour ; clic = ouvrir le jour). **Bilan** : bascule Semaine / Mois.
+- Bouton **« Ajouter une entreprise »** en haut de la page Entreprises.
+
+## Menu du mois et choix modifiables (6 octobre 2026)
+- Site : bouton **« Voir tout le menu »** (fenêtre avec tous les plats publiés, semaine par semaine,
+  jour par jour, bouton « Choisir »). Titre « Au menu ce mois-ci » quand plus de 7 jours sont publiés.
+- Panier : choix classés par jour (le 1er tel plat, le 2 tel autre…).
+- Page **« Mes repas »** (`/mes-repas`, lien dans l'en-tête si `CLIENT.partners`) : entreprise +
+  téléphone + code → plats à venir ; **changer de plat** (même jour) ou **annuler un jour** jusqu'à
+  l'heure limite de l'entreprise, puis « Clos ». Stock et total de la commande mis à jour.
+- RPC `partner_my_choices`, `partner_change_choice` (migration `20261006090000`), vérification du code
+  partagée (`_partner_employee_auth`, 5 essais max).
+
+## Panier simplifié et traçabilité (6 octobre 2026)
+- **Panier entreprise** : l'employé choisit son entreprise et donne son **nom et son téléphone** (plus de
+  code). RPC `place_partner_order_simple`. Réglage par entreprise `open_enrollment` : « Liste des
+  employés uniquement » (numéro inconnu refusé) ou « Tout employé » (ajouté automatiquement à la liste).
+- Site : `CLIENT.individualOrders` (false = commandes entreprise uniquement ; true = choix
+  « Mon entreprise est partenaire » / « Livraison individuelle »). Récapitulatif par jour à droite.
+- Page « Mes repas » retirée.
+- **Traçabilité des repas** (onglet de la page Entreprises) : repas par personne, par entreprise, par
+  mois (graphique annuel), sur un mois, une année ou une période ; recherche, export CSV, fiche détaillée
+  d'une personne. Fonctions `meal_stats_by_person`, `meal_stats_by_month`, `meal_history`
+  (migration `20261006140000`, calculs côté base).
+- Lecture des lignes de commande **page par page** (`runAll`) : Supabase limite à 1 000 lignes par
+  requête, ce qui tronquait les bons et factures des gros mois.
+
